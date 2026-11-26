@@ -5,6 +5,11 @@
   coding agents: it separates <i>kinds of judgment</i>, not a chain of command.
 </p>
 
+<p align="center">
+  A maintained fork of <a href="https://github.com/duongvm57/paseo-slp-plugin">paseo-slp</a> by
+  Vu Duong, who designed the method and wrote the original plugin.
+</p>
+
 Give a **Lead** a bounded objective, or work through an optional **Supervisor**.
 The Lead coordinates independent Peers, integrates their work and returns a project verdict.
 Each seat is an ordinary Paseo agent with its role instructions loaded separately from your task.
@@ -18,8 +23,9 @@ owner handoff. Open **Read SLP work** to inspect registered work without reconst
 
 ## About this project
 
-SLP Revibed continues [paseo-slp](https://github.com/duongvm57/paseo-slp-plugin) by Vu Duong,
-which is no longer maintained. The name keeps SLP, the Supervisor–Lead–Peer method, and adds a
+SLP Revibed continues [paseo-slp](https://github.com/duongvm57/paseo-slp-plugin) by Vu Duong
+([@duongvm57](https://github.com/duongvm57)), which is no longer maintained. The role model, the
+repository desk and nearly all of the code are that project's work. The name keeps SLP, the Supervisor–Lead–Peer method, and adds a
 nod to vibe coding. This fork keeps the method and the repository desk, and differs in three ways:
 
 - **It tracks current Paseo.** It is developed and tested against Paseo **0.17.5**.
