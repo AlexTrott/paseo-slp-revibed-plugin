@@ -332,9 +332,13 @@ export function routingDiverges(
     if (choice.model !== undefined && live.model !== choice.model) return true;
     if (choice.modeId !== undefined && live.modeId !== choice.modeId) return true;
     if (choice.thinkingOptionId !== undefined && live.thinkingOptionId !== choice.thinkingOptionId) return true;
+    // No values is one state here: Paseo 0.16+ stores an empty record as an
+    // absent key, so a routed `{}` and a live null are the same profile.
+    const noValues = (value: Record<string, unknown> | null | undefined) =>
+      value == null || Object.keys(value).length === 0 ? null : value;
     if (
       choice.featureValues !== undefined &&
-      featureValuesKey(live.featureValues) !== featureValuesKey(choice.featureValues)
+      featureValuesKey(noValues(live.featureValues)) !== featureValuesKey(noValues(choice.featureValues))
     ) return true;
   }
   return false;

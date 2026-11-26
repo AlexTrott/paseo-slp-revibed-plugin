@@ -31,6 +31,7 @@ import {
   opConflicts,
   readConfigJson,
   readReceipt,
+  savedProfileOptions,
   slpProvidersOf,
   targetOf,
   waitTerminal,
@@ -229,7 +230,7 @@ test('routing generates the two chosen combos plus all four peers', async t => {
   assert.equal(lead.provider, 'slp-devin-lead');
   assert.equal(lead.model, 'swe-2-max');
   assert.equal(lead.thinkingOptionId, 'high');
-  assert.deepEqual(lead.featureValues, { auto_accept: true });
+  assert.deepEqual(savedProfileOptions(lead), { auto_accept: true });
 
   // The recorded projection spans all owned ids; non-chosen entries are
   // present:false, which is what drives removal.

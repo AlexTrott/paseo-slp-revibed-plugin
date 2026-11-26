@@ -126,7 +126,17 @@ const VALID_ROLES = new Set<string>(ROLES);
  *  resolve — through the owned suffix or the `slp_role` feature marker (the
  *  4-provider variant seam) — or the create fails closed: an slp-* provider
  *  we cannot map would otherwise spawn a silently unroled managed seat. */
-function roleForCreate(provider: string, featureValues: Record<string, unknown> | undefined): string | null {
+/** Composer options as a create carries them. Hosts through 0.15 pass
+ *  `featureValues` untouched. From 0.16 the host folds them into
+ *  `providerOptions` and hands hooks a `featureValues` copy only while that
+ *  record is non-empty — a copy it has scheduled for removal. One merged view
+ *  serves every host; no options at all is null, never `{}`. */
+function createOptions(config: { featureValues?: Record<string, unknown>; providerOptions?: Record<string, unknown> | null } | undefined): Record<string, unknown> | null {
+  const merged = { ...(config?.featureValues ?? {}), ...(config?.providerOptions ?? {}) };
+  return Object.keys(merged).length > 0 ? merged : null;
+}
+
+function roleForCreate(provider: string, featureValues: Record<string, unknown> | null): string | null {
   const owned = HOOK_FAMILY_PROVIDER.exec(provider);
   if (owned !== null) return owned[2];
   if (!provider.startsWith("slp-") || WRAPPER_PROVIDER.test(provider)) return null;
@@ -237,7 +247,7 @@ export function createRoleInjection(deps: RoleInjectionDeps) {
         cwd: config.cwd,
         modeId: typeof config.modeId === "string" ? config.modeId : null,
         thinkingOptionId: typeof config.thinkingOptionId === "string" ? config.thinkingOptionId : null,
-        featureValues: config.featureValues ?? null,
+        featureValues: createOptions(config),
       },
     };
   }
@@ -282,7 +292,7 @@ export function createRoleInjection(deps: RoleInjectionDeps) {
           env: taskTicketContext === undefined ? { ...(input.request.env ?? {}), [DESK_HANDLE_KEY]: handle } : envAfterTicket(input.request, handle),
         };
       }
-      const role = roleForCreate(provider, config.featureValues);
+      const role = roleForCreate(provider, createOptions(config));
       if (role === null) return;
       const binding = deps.readActiveBinding();
       if (binding === null) {

@@ -37,7 +37,18 @@ export function writeConfig(file: ReturnType<typeof configFile>, next: HostConfi
 }
 
 export const providers = (config: HostConfig) => config.agents?.providers ?? {};
-export const agentProfiles = (config: HostConfig) => config.daemon?.agentProfiles ?? [];
+// Paseo 0.16+ persists a saved profile's composer values as `options`;
+// earlier hosts use `featureValues`. Readers behind this seam see one key:
+// `featureValues`, with `options` folded in (it wins, as on the host) and no
+// values at all as the absent key.
+export const readableProfile = <T>(entry: T): T => {
+  if (!record(entry) || !(Object.hasOwn(entry, 'options') || Object.hasOwn(entry, 'featureValues'))) return entry;
+  const { featureValues, options, ...rest } = entry;
+  if ((featureValues !== undefined && !record(featureValues)) || (options !== undefined && !record(options))) return entry;
+  const merged = { ...featureValues, ...options };
+  return (Object.keys(merged).length > 0 ? { ...rest, featureValues: merged } : rest) as T;
+};
+export const agentProfiles = (config: HostConfig) => (config.daemon?.agentProfiles ?? []).map(readableProfile);
 
 // One rule for "is this owned provider still exactly as we installed it".
 export function verifyOwnedProviders(config: HostConfig, owned: Record<string, Record<string, unknown>>, preserve = 'installation') {
@@ -52,7 +63,7 @@ export function verifyOwnedProviders(config: HostConfig, owned: Record<string, R
 export function matchOwnedProfile(config: HostConfig, expected: Profile, mode: 'bound' | 'exact') {
   const matches = agentProfiles(config).filter(p => (p as { id?: unknown }).id === expected.id);
   if (mode === 'exact') {
-    if (matches.length !== 1 || !isDeepStrictEqual(matches[0], expected)) throw new Error(`Modified profile ${expected.id}; preserve installation`);
+    if (matches.length !== 1 || !isDeepStrictEqual(matches[0], readableProfile(expected))) throw new Error(`Modified profile ${expected.id}; preserve installation`);
     return matches[0] as Profile;
   }
   const role = roleOfProfileId(expected.id);

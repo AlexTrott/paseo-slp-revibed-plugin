@@ -182,9 +182,52 @@ export function providersPresent(rawJson: unknown): boolean {
   return getPath(rawJson, ["agents", "providers"]).present;
 }
 
-export function profilesArray(rawJson: unknown): { present: boolean; value: unknown[] } {
+// Saved-profile options vocabulary. Hosts through 0.15 store and serve a
+// profile's composer values as `featureValues`. From 0.16 the host stores
+// `options`, serves both keys, and drops an empty record entirely. Receipts,
+// plans and the routing store keep `featureValues`, so every profile read and
+// every recorded value passes through one canonical form before comparison:
+// `featureValues` only, `options` folded in (it wins, as on the host), and no
+// options at all is the absent key — never `{}`.
+
+export function canonicalProfile<T>(entry: T): T {
+  if (!isRecord(entry)) return entry;
+  const hasFeatures = Object.hasOwn(entry, "featureValues");
+  const hasOptions = Object.hasOwn(entry, "options");
+  if (!hasFeatures && !hasOptions) return entry;
+  const { featureValues, options, ...rest } = entry;
+  // A malformed value stays as written so schema validation still reports it.
+  if ((hasFeatures && !isRecord(featureValues)) || (hasOptions && !isRecord(options))) return entry;
+  const merged = { ...(featureValues as Record<string, unknown> | undefined), ...(options as Record<string, unknown> | undefined) };
+  return (Object.keys(merged).length > 0 ? { ...rest, featureValues: merged } : rest) as T;
+}
+
+export function canonicalProjection(projection: ProjectionValue): ProjectionValue {
+  return { ...projection, profiles: projection.profiles.map(slot => ({ ...slot, value: canonicalProfile(slot.value) })) };
+}
+
+/** True when the host's own data already carries `options` on a profile. */
+export function profilesUseOptionsKey(profiles: readonly unknown[]): boolean {
+  return profiles.some(entry => isRecord(entry) && Object.hasOwn(entry, "options"));
+}
+
+/** Canonical profiles as a config patch carries them. A host that stores
+ *  `options` reads a `featureValues`-only write as a patch over the stored
+ *  record, so a removed key would survive; an explicit `options` replaces it.
+ *  Hosts that never showed the key keep receiving `featureValues` alone. */
+export function profilesForPatch(profiles: readonly unknown[], hostUsesOptions: boolean): unknown[] {
+  if (!hostUsesOptions) return [...profiles];
+  return profiles.map(entry => {
+    if (!isRecord(entry)) return entry;
+    const canonical = canonicalProfile(entry);
+    return { ...canonical, options: isRecord(canonical.featureValues) ? { ...canonical.featureValues } : {} };
+  });
+}
+
+export function profilesArray(rawJson: unknown): { present: boolean; value: unknown[]; usesOptionsKey: boolean } {
   const found = getPath(rawJson, ["daemon", "agentProfiles"]);
-  return { present: found.present, value: Array.isArray(found.value) ? found.value : [] };
+  const value = Array.isArray(found.value) ? found.value : [];
+  return { present: found.present, value: value.map(canonicalProfile), usesOptionsKey: profilesUseOptionsKey(value) };
 }
 
 export function mcpFlagPresence(rawJson: unknown, key: "enabled" | "injectIntoAgents") {
@@ -285,7 +328,7 @@ export function unrelatedPersistedView(rawJson: unknown, ids: readonly string[] 
         entry => !(isRecord(entry) && typeof entry.id === "string" && OWNED_PROFILE_IDS.includes(entry.id)),
       );
       if (kept.length === 0) delete daemon.value.agentProfiles;
-      else daemon.value.agentProfiles = kept;
+      else daemon.value.agentProfiles = kept.map(canonicalProfile);
     } else {
       delete daemon.value.agentProfiles;
     }
@@ -324,6 +367,8 @@ export interface EffectiveView {
   injectIntoAgents: boolean;
   providers: Record<string, unknown>;
   agentProfiles: { present: boolean; value: unknown[] };
+  /** The host served a profile with an `options` key (0.16+ vocabulary). */
+  profilesUseOptionsKey: boolean;
   metadataProviders: unknown[];
 }
 
@@ -339,8 +384,9 @@ export function effectiveView(config: unknown): EffectiveView {
     providers: isRecord(providers.value) ? providers.value : {},
     agentProfiles: {
       present: profiles.present,
-      value: Array.isArray(profiles.value) ? profiles.value : [],
+      value: Array.isArray(profiles.value) ? profiles.value.map(canonicalProfile) : [],
     },
+    profilesUseOptionsKey: Array.isArray(profiles.value) && profilesUseOptionsKey(profiles.value),
     metadataProviders: Array.isArray(metadata.value) ? metadata.value : [],
   };
 }
@@ -404,9 +450,15 @@ export function assertRawLiveAgreement(
   if (divergent.length > 0) {
     const shown = divergent.slice(0, 8).join(", ");
     const rest = divergent.length > 8 ? ` (+${divergent.length - 8} more)` : "";
+    // Paseo 0.16+ renames some saved option keys in memory at startup (Codex
+    // fast_mode, Claude ultracode) and rewrites config.json only on the next
+    // profile save, so this state is reachable without any outside edit.
+    const hint = divergent.includes("daemon.agentProfiles") && effective.profilesUseOptionsKey
+      ? " (if this Paseo version migrated a saved profile option at startup, re-save that profile in Paseo settings and retry)"
+      : "";
     throw new OperationConflict(
       "RAW_LIVE_DIVERGENCE",
-      `raw persisted config and live config disagree at: ${shown}${rest}; an administrator must resolve overrides or reload outside this transaction`,
+      `raw persisted config and live config disagree at: ${shown}${rest}; an administrator must resolve overrides or reload outside this transaction${hint}`,
       { path: divergent[0].split(" ")[0] },
     );
   }

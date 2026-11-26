@@ -154,6 +154,7 @@ Which test covers which area, from what each file imports:
 | `plugin/server/antigravity/*` | `plugin-antigravity`, `plugin-antigravity-mcp` |
 | `bin/grok-role.mjs`, `runtime/cli/grok-acp.ts` | `grok` |
 | `plugin/server/delivered-input.ts` | `plugin-delivered-input`, `plugin-desk-delivery` |
+| `plugin/server/lifecycle-hooks.ts`, `turn-history.ts`, profile/option host seams | `plugin-host-compat`, `plugin-turn-history` |
 | `plugin/server/supervision/*`, `plugin/shared/supervision.ts` | `plugin-supervision`, `plugin-supervision-capture`, `-card`, `-delivery`, `-observer` |
 | `plugin/client/*` (cards, catalog demand, workflow panel, manager state) | `client-catalog-demand`, `client-target-async`, `client-workflow-view`, `plugin-ui`; hooks load through `tests/helpers/*-entry.mts` |
 | `plugin/server/runtime/cli/*` (install, launch, inventory, monitor, notebook, host config, profiles, package) | `install`, `local`, `materialize`, `launch`, `inventory`, `monitor`, `notebook`, `runtime-core-install` |
@@ -179,13 +180,25 @@ SDK effects remain fixtures; these checks do not prove live delivery, process
 quiescence or role compliance. See [task execution](task-execution.md) for the
 operational limits.
 
-On Paseo 0.13 and later, turn-ended hooks carry no timeline. SLP reads a
+On Paseo 0.13 and later, turn-ended hooks carry no timeline; from 0.16 the
+field is absent from the SDK type and the host's empty compatibility copy is
+scheduled for removal, so SLP treats it as optional. SLP reads a
 bounded tail (at most 500 entries) and uses only the exact ended turn when
 both boundaries are visible. Missing turn IDs, truncated history, timeout or
 archive during the read leave the observation unverified. This adapter does
 not establish live supervision or Desk delivery acceptance.
 
-Native task adapters compile against the pinned SDK 0.15.4 declarations;
+Host-version seams are single functions: `lifecycleHooks`
+(`plugin/server/lifecycle-hooks.ts`) registers through `addHook` where the
+host offers it and the legacy `on`/`before` pair on 0.11–0.13;
+`canonicalProfile` (`plugin/server/config-view.ts`) and `readableProfile`
+(offline CLI) fold a saved profile's `options`/`featureValues` into one form;
+`createOptions` (`role-injection.ts`) does the same for create-hook options.
+`tests/plugin-host-compat.test.mjs` covers them. Run the host-parity tests
+against both an older and the current host when touching these
+(`PASEO_CLI_MODULES`).
+
+Native task adapters compile against the pinned SDK 0.17.5 declarations;
 installation compatibility with an older daemon does not establish its execution
 capabilities. Installed dependency checks and extracted-target typechecks are
 reported separately.
@@ -214,7 +227,7 @@ claims need a deliberately exercised fault boundary and native timeline.
 
 ### Container install/load checks
 
-`./tests/container/run` builds a disposable image pinned to Paseo 0.15.4 and
+`./tests/container/run` builds a disposable image pinned to Paseo 0.17.5 and
 exercises installation, retained runtime loading and contributor registration.
 It needs Docker and outbound network. [Container instructions](../tests/container/README.vi.md)
 separate fake-home install/load checks from a real disposable daemon serve.

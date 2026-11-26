@@ -119,7 +119,11 @@ test('host resolves the explicit launcher override and leaves the default unavai
   const client = registry.definitions()[registration.id].createClient({ warn() {} }, {
     command: { mode: 'replace', argv: [f.launch.command, ...f.launch.args] }, env: f.launch.env,
   });
-  assert.equal(await client.isAvailable(), true, JSON.stringify(await client.getDiagnostic()));
+  // The diagnostic is failure detail only. 0.17 hosts pass it an inspection
+  // context; reading it eagerly without one would fail a passing check.
+  const available = await client.isAvailable();
+  assert.equal(available, true, available ? undefined
+    : JSON.stringify(await client.getDiagnostic({ inspectInstallation: async () => null }).catch(error => String(error))));
   const catalog = await client.fetchCatalog({ scope: 'workspace', cwd: f.cwd });
   assert.equal(catalog.models[0].id, 'gemini-test');
 });

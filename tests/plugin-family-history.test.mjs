@@ -9,7 +9,7 @@ import { canonicalSha256, effectiveView, extractProjection, unrelatedPersistedVi
 import { classifyState, patchForDirection } from '../plugin/server/config-transaction.ts';
 import { Receipt, OwnedProvider, PersistedProvider, Projection } from '../plugin/shared/contracts.ts';
 import { LEGACY_FAMILY_IDS, PRE_ANTIGRAVITY_FAMILY_IDS, PRE_GROK_FAMILY_IDS, FAMILY_IDS, ROLES, LEGACY_OWNED_PROVIDER_IDS, OWNED_PROVIDER_IDS } from '../plugin/shared/runtime/families.ts';
-import { activateInput, deactivateInput, reconcileInput, makePluginFixture, makeDeps, makeDaemon, receiptPath, readReceipt, readConfigJson, sha256, waitTerminal, waitRecovery, dirBlocker, armRecoveryFault } from './helpers/plugin-doubles.mjs';
+import { activateInput, deactivateInput, reconcileInput, makePluginFixture, makeDeps, makeDaemon, receiptPath, readReceipt, readConfigJson, sha256, waitTerminal, waitRecovery, dirBlocker, armRecoveryFault, savedProfileOptions } from './helpers/plugin-doubles.mjs';
 
 const addedIds = ['slp-opencode-supervisor', 'slp-opencode-lead', 'slp-opencode-peer'];
 const encoded = value => JSON.stringify(value, null, 2) + '\n';
@@ -207,7 +207,7 @@ test('authorized rebind emits current21/current7 while preserving the exact lega
   const config = readConfigJson(f.home);
   config.agents.providers.personal = { extends: 'codex', label: 'Unrelated', command: ['/bin/true'] };
   const profile = config.daemon.agentProfiles.find(p => p.id === 'slp-lead');
-  Object.assign(profile, { model: 'provider/nested/model', modeId: 'full-access', thinkingOptionId: 'high', featureValues: { fast_mode: true } });
+  Object.assign(profile, { model: 'provider/nested/model', modeId: 'full-access', thinkingOptionId: 'high', featureValues: { human_choice: true } });
   writeFileSync(join(f.home, 'config.json'), encoded(config));
   f.daemon = await makeDaemon(t, f.home);
   const start = await f.manager.activate(activateInput(f.home, f.deps.payload, randomUUID()), f.daemon);
@@ -218,7 +218,8 @@ test('authorized rebind emits current21/current7 while preserving the exact lega
   assert.deepEqual(read.operations[0], f.receipt.operations[0]); assert.deepEqual(read.binding.beforeActivation, f.receipt.binding.beforeActivation);
   assert.deepEqual(readConfigJson(f.home).agents.providers.personal, config.agents.providers.personal);
   const result = readConfigJson(f.home).daemon.agentProfiles.find(p => p.id === 'slp-lead');
-  for (const key of ['model', 'modeId', 'thinkingOptionId', 'featureValues']) assert.deepEqual(result[key], profile[key]);
+  for (const key of ['model', 'modeId', 'thinkingOptionId']) assert.deepEqual(result[key], profile[key]);
+  assert.deepEqual(savedProfileOptions(result), profile.featureValues);
   const plan = read.operations.at(-1).plan;
   assert.equal(Object.keys(plan.before.owned.providers).length, 21); assert.equal(Object.keys(plan.afterOwned.providers).length, 21);
   assert.deepEqual(plan.previousBinding, f.receipt.binding);

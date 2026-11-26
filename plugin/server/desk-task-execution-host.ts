@@ -43,6 +43,9 @@ export type TaskAgentSnapshot = {
   thinkingOptionId?: string | null;
   effectiveThinkingOptionId?: string | null;
   features?: TaskAgentFeature[];
+  /** 0.16+ hosts: the provider options the agent runs with. `features` is
+   *  then only the legacy projection of the options that have a control. */
+  options?: Record<string, unknown> | null;
 };
 
 /** Host-reported feature entry — toggle carries a boolean value, select a

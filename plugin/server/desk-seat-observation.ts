@@ -1,5 +1,6 @@
 // Native seat observation shared by ordinary formation and managed tasks.
 // This module reads one fresh SDK snapshot; it owns no task state or effects.
+import { isDeepStrictEqual } from "node:util";
 import type { TaskAgentHandle } from "./desk-task-execution-host.ts";
 import { retrospectiveLabel } from "../shared/runtime/episode-labels.ts";
 
@@ -95,11 +96,18 @@ export async function verifySeat(
   }
   const wantedFeatures = pin.features ?? null;
   if (wantedFeatures !== null && Object.keys(wantedFeatures).length > 0) {
-    if (agent.features === undefined) {
+    // 0.16+ hosts report the applied options directly; `features` there is a
+    // deprecated projection that lists only options with a composer control.
+    const options = agent.options ?? null;
+    if (agent.features === undefined && options === null) {
       mismatches.push("features:unreported");
     } else {
       for (const [id, value] of Object.entries(wantedFeatures)) {
-        const entry = agent.features.find(f => f.id === id);
+        if (options !== null && Object.hasOwn(options, id)) {
+          if (!isDeepStrictEqual(options[id], value)) mismatches.push(`feature:${id}:${String(options[id])}`);
+          continue;
+        }
+        const entry = agent.features?.find(f => f.id === id);
         if (entry === undefined) mismatches.push(`feature:${id}:absent`);
         else if (entry.value !== value) mismatches.push(`feature:${id}:${String(entry.value)}`);
       }

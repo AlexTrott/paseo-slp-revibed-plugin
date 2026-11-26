@@ -26,7 +26,11 @@ const GITLINK_OID = '0123456789012345678901234567890123456789';
 
 // Pinned author/committer dates keep fixture commits byte-identical — the
 // canonical fixture (C-S4) asserts a literal SHA-256 over the emitted view.
-const GIT_ENV = { ...process.env, GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z' };
+// Fixture commits must not read the developer's git configuration: a global
+// commit.gpgsign (or any hook/template setting) changes the commit object and
+// with it every pinned sha.
+const GIT_ENV = { ...process.env, GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
+  GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const git = (repo, args, options) => execFileSync('git', ['--no-optional-locks', '-C', repo, ...args], { encoding: 'utf8', env: GIT_ENV, ...options });
 const flip = (sha, at = 0) => `${sha.slice(0, at)}${sha[at] === 'a' ? 'b' : 'a'}${sha.slice(at + 1)}`;
 const sha256hex = bytes => hash(typeof bytes === 'string' ? Buffer.from(bytes, 'utf8') : bytes);

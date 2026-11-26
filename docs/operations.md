@@ -101,6 +101,19 @@ availability and conflicts before changing anything.
 - If raw and live config disagree, or an owned entry was modified outside
   the journal, the state moves to `RECOVERY_REQUIRED`; run **Reconcile →
   inspect** to re-verify and resolve before retrying.
+- Paseo 0.16 and later store a saved profile's composer values as `options`
+  and drop an empty record; earlier hosts use `featureValues`. SLP reads and
+  compares both as one form, and writes `options` only to a host that
+  already uses the key. An activation that an earlier SLP version left in
+  `RECOVERY_REQUIRED` after a Paseo upgrade (`post-patch state is partial …
+  daemon.agentProfiles`) finishes with **Reconcile → complete** once this
+  version is loaded.
+- Paseo 0.17 renames some legacy option keys in memory when the daemon starts
+  (Codex `fast_mode`, Claude `ultracode` effort) and rewrites `config.json`
+  only at the next profile save. Until then SLP reports
+  `RAW_LIVE_DIVERGENCE` at `daemon.agentProfiles`: open that profile in Paseo
+  settings, save it, and retry. A Peer option that still names a renamed key
+  fails seat verification; choose the option again in the Peer pool.
 
 ### Publication and interrupted configuration
 

@@ -5,8 +5,8 @@
   "version": "0.0.0",
   "description": "SLP runtime manager plugin for Paseo (Option A v1)",
   "dependencies": {
-    "@getpaseo/protocol": "0.15.4",
-    "zod": "4.6.5"
+    "@getpaseo/protocol": "0.17.5",
+    "zod": "4.6.7"
   },
   "type": "module"
 }

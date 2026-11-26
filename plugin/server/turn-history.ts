@@ -1,7 +1,12 @@
 import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import type { PluginLifecycleEvents } from "@getpaseo/plugin/server";
 
-type TurnEnded = PluginLifecycleEvents["agent.turn_ended"];
+/** The turn-ended payload as SLP consumes it. `timeline` left the SDK type
+ *  in 0.16: hosts through 0.12 fill it, 0.13–0.17 send it empty, and the
+ *  host's compatibility copy is scheduled for removal, so it is optional. */
+export type TurnEnded = PluginLifecycleEvents["agent.turn_ended"] & { timeline?: readonly AgentTimelineItem[] };
+/** A turn whose history is established: carried by the host or read back. */
+export type ObservedTurn = TurnEnded & { timeline: readonly AgentTimelineItem[] };
 type Page = {
   agentId: string;
   entries: { turnId?: string; item: AgentTimelineItem }[];
@@ -18,13 +23,14 @@ export type TurnHistoryApi = {
   } };
 };
 
-// 0.13+ turn-ended hooks no longer carry history. One bounded tail read
+// 0.13+ turn-ended hooks carry no history. One bounded tail read
 // supplies evidence only when BOTH edges of the exact turn are visible.
 // Truncated, unlabelled or failed reads cannot establish an observation.
 export async function readTurnHistory(event: TurnEnded, paseo: TurnHistoryApi,
-  signal: AbortSignal = new AbortController().signal, timeoutMs = 1500): Promise<TurnEnded | null> {
+  signal: AbortSignal = new AbortController().signal, timeoutMs = 1500): Promise<ObservedTurn | null> {
   if (signal.aborted) return null;
-  if (event.timeline.length) return event; // Legacy hosts retain their payload contract.
+  const carried = event.timeline;
+  if (carried !== undefined && carried.length > 0) return event as ObservedTurn; // Legacy hosts retain their payload contract.
   if (event.turnId === null) return null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let abort: (() => void) | undefined;

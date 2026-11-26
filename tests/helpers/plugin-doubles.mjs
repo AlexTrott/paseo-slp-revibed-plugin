@@ -540,6 +540,12 @@ export async function makeDaemon(t, home, opts = {}) {
   } else {
     store = new MiniStore(home, opts.overrides);
   }
+  // The plugin reads config over the daemon's JSON wire, never the store
+  // object: 0.16+ hosts answer through toWireDaemonConfig (profile options are
+  // mirrored into legacy featureValues) and serialization drops undefined keys.
+  const wire = config => using === 'real'
+    ? JSON.parse(JSON.stringify(backend.toWireDaemonConfig ? backend.toWireDaemonConfig(config) : config))
+    : config;
   const patchCalls = [];
   let getCalls = 0;
   const daemon = {
@@ -552,7 +558,7 @@ export async function makeDaemon(t, home, opts = {}) {
     config: {
       async get(requestId) {
         getCalls += 1;
-        return { requestId: requestId ?? randomUUID(), config: store.get() };
+        return { requestId: requestId ?? randomUUID(), config: wire(store.get()) };
       },
       patch(patch, requestId) {
         const index = patchCalls.length;
@@ -564,7 +570,7 @@ export async function makeDaemon(t, home, opts = {}) {
           if (script === 'hang') return new Promise(() => {});
           await store.patch(patch);
           if (script === 'apply-then-reject') throw new Error('injected lost response');
-          return { requestId: requestId ?? randomUUID(), config: store.get() };
+          return { requestId: requestId ?? randomUUID(), config: wire(store.get()) };
         })();
       },
     },
@@ -594,6 +600,13 @@ export function makeBinaries(t, families = FAMILIES) {
   }
   return binaries;
 }
+
+/** A saved profile's composer values in whichever key the host persists:
+ *  `options` on Paseo 0.16+, `featureValues` before. */
+export const savedProfileOptions = profile => profile.options ?? profile.featureValues;
+
+/** A store's config as a client receives it: JSON, without undefined keys. */
+export const wireShape = value => JSON.parse(JSON.stringify(value));
 
 export const POISON_UUID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 let uuidSalt = 0;

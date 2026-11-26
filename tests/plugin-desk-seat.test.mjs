@@ -159,7 +159,7 @@ test('W8: the seven ExactKeys pairs hold on the exported policy value', () => {
   // `npm run typecheck`; this test pins the runtime-visible half: the
   // policy branches exist with the expected shapes.
   assert.deepEqual(Object.keys(DESK_FIELD_POLICY), ['mint', 'bind', 'register', 'revoke']);
-  assert.deepEqual(Object.keys(DESK_FIELD_POLICY.mint), ['config', 'env']);
+  assert.deepEqual(Object.keys(DESK_FIELD_POLICY.mint), ['config', 'env', 'metadata', 'workspaceId']);
   assert.deepEqual(Object.keys(DESK_FIELD_POLICY.register), ['agent']);
   assert.deepEqual(Object.keys(DESK_FIELD_POLICY.revoke), ['agent', 'archivedAt']);
 });

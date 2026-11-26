@@ -891,7 +891,7 @@ export function createSupervisionObserver(deps: ObserverDeps) {
     } else if (routeFor(leadId) === null) {
       return;
     }
-    const needsHistory = event.timeline.length === 0;
+    const needsHistory = event.timeline === undefined || event.timeline.length === 0;
     // Reserve chronology and archive generations synchronously, before I/O.
     // The placeholder carries no bodies and is never assessed as evidence.
     const captured: Capture | null = capture(event, { has: candidateLead }) ?? (needsHistory

@@ -452,7 +452,9 @@ test('read: unexpected segment I/O throws IO_FAILURE — corrupt is reserved for
 
   // …but a filesystem fault on the same segment throws IO_FAILURE.
   writeFileSync(segment, good);
-  if (process.platform !== 'win32') {
+  // Mode bits cannot deny root, so the fault is unobservable there (containers).
+  if (process.getuid?.() === 0) t.diagnostic('running as root: the unreadable-segment fault cannot be produced; IO_FAILURE branch not exercised');
+  if (process.platform !== 'win32' && process.getuid?.() !== 0) {
     const stat = statSync(segment);
     t.after(() => { try { chmodSync(segment, stat.mode); } catch { /* dir removed anyway */ } });
     chmodSync(segment, 0o000);

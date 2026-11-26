@@ -21,9 +21,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@getpaseo/client": "0.15.4",
-    "@getpaseo/plugin": "0.15.4",
-    "@getpaseo/protocol": "0.15.4",
+    "@getpaseo/client": "0.17.5",
+    "@getpaseo/plugin": "0.17.5",
+    "@getpaseo/protocol": "0.17.5",
     "@types/node": "24.10.1",
     "@types/react": "19.1.17",
     "esbuild": "0.25.12",
@@ -31,6 +31,6 @@
     "react-native": "0.81.5",
     "react-test-renderer": "19.1.9",
     "typescript": "5.9.3",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   }
 }

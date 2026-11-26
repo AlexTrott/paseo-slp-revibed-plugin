@@ -57,9 +57,11 @@ import {
   receiptPath,
   sha256,
   slpProvidersOf,
+  savedProfileOptions,
   statusInput,
   targetOf,
   waitTerminal,
+  wireShape,
 } from './helpers/plugin-doubles.mjs';
 
 // ---------------------------------------------------------------------------
@@ -791,7 +793,7 @@ test('profiles on first activation write the supplied values verbatim', async t 
   const lead = profiles.find(p => p.id === 'slp-lead');
   assert.equal(supervisor.model, 'swe-2-high');
   assert.equal(supervisor.modeId, 'bypass');
-  assert.deepEqual(supervisor.featureValues, { auto_accept: true });
+  assert.deepEqual(savedProfileOptions(supervisor), { auto_accept: true });
   assert.equal(supervisor.provider, 'slp-codex-supervisor', 'default family applies without a per-role override');
   assert.equal(lead.provider, 'slp-devin-lead', 'per-role family override repoints the provider');
   assert.equal(lead.model, 'swe-2-max');
@@ -830,7 +832,37 @@ test('profiles on an existing binding apply explicit edits: set, clear, repoint'
   assert.equal(supervisor.modeId, 'bypass', 'absent fields preserve the live value');
   assert.equal(lead.provider, 'slp-codex-lead', 'no family key preserves the live provider');
   assert.equal(lead.model, 'swe-2-max');
-  assert.deepEqual(lead.featureValues, { auto_accept: true });
+  assert.deepEqual(savedProfileOptions(lead), { auto_accept: true });
+});
+
+test('profile option values survive the whole lifecycle in the host\'s own key: empty, set, key removed, cleared', async t => {
+  const { home, daemon, deps } = await makePluginFixture(t);
+  const manager = createManager(deps);
+  const run = async profiles => {
+    const start = await manager.activate(activateInput(home, deps.payload, randomUUID(), { profiles }), daemon);
+    assert.equal(start.accepted, true, JSON.stringify(start.conflicts));
+    const done = await waitTerminal(manager, home, start.operation.operationId, daemon);
+    assert.equal(done.operation.outcome, 'succeeded', JSON.stringify(done.conflicts));
+    assert.equal(done.state, 'ACTIVE');
+    const saved = id => savedProfileOptions(readConfigJson(home).daemon.agentProfiles.find(p => p.id === id));
+    return { done, lead: saved('slp-lead'), supervisor: saved('slp-supervisor') };
+  };
+  // The settings surface writes an explicit empty record whenever a provider
+  // advertises features; a 0.16+ host stores that as no key at all.
+  let seen = await run({ supervisor: { featureValues: {} }, lead: { featureValues: { auto_accept: true, extra: 'x' } } });
+  assert.deepEqual(seen.lead, { auto_accept: true, extra: 'x' });
+  assert.ok(seen.supervisor === undefined || Object.keys(seen.supervisor).length === 0);
+  assert.deepEqual(seen.done.managedProfiles.find(p => p.id === 'slp-lead').featureValues, { auto_accept: true, extra: 'x' });
+  // A 0.16+ host reads a featureValues-only write as a patch over the stored
+  // record, so removing a key needs the explicit replacement.
+  seen = await run({ lead: { featureValues: { auto_accept: true } } });
+  assert.deepEqual(seen.lead, { auto_accept: true });
+  seen = await run({ lead: { featureValues: null } });
+  assert.ok(seen.lead === undefined || Object.keys(seen.lead).length === 0, 'null clears every value');
+  const status = await manager.status(statusInput(home), daemon);
+  const stop = await manager.deactivate(deactivateInput(home, randomUUID(), status.binding.bindingSha256), daemon);
+  const stopped = await waitTerminal(manager, home, stop.operation.operationId, daemon);
+  assert.equal(stopped.state, 'INACTIVE', JSON.stringify(stopped.conflicts));
 });
 
 test('profiles on an existing binding reject an unavailable family', async t => {
@@ -1324,7 +1356,7 @@ test('installed-impl parity: MiniStore and DaemonConfigStore merge the same patc
   mini.patch(patch1);
   await real.patch(patch1);
   assert.deepEqual(readConfigJson(homeMini), readConfigJson(homeReal), 'patch1 persisted divergence');
-  assert.deepEqual(mini.get(), real.get(), 'patch1 effective divergence');
+  assert.deepEqual(wireShape(mini.get()), wireShape(real.get()), 'patch1 effective divergence');
 
   const patch2 = {
     removeProviders: ['slp-codex-peer'],
@@ -1336,7 +1368,7 @@ test('installed-impl parity: MiniStore and DaemonConfigStore merge the same patc
   mini.patch(patch2);
   await real.patch(patch2);
   assert.deepEqual(readConfigJson(homeMini), readConfigJson(homeReal), 'patch2 persisted divergence');
-  assert.deepEqual(mini.get(), real.get(), 'patch2 effective divergence');
+  assert.deepEqual(wireShape(mini.get()), wireShape(real.get()), 'patch2 effective divergence');
 });
 
 test('mixed absent/exact-present adoption computes indexes over the full array', async t => {

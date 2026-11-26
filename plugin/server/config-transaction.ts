@@ -57,6 +57,8 @@ import {
   ROLE_DISPLAY,
   allProfilesHash,
   canonicalEqual,
+  canonicalProfile,
+  canonicalProjection,
   canonicalSha256,
   effectiveView,
   extractProjection,
@@ -66,6 +68,7 @@ import {
   isRecord,
   mcpFlagPresence,
   profilesArray,
+  profilesForPatch,
   profilesHashOf,
   providerWrittenFieldsEqual,
   providersRecord,
@@ -756,7 +759,7 @@ function computeSlots(baseArray: unknown[], profiles: ProfileValue[]): { index: 
   const slots = profiles.map(profile => {
     const existing = baseArray.findIndex(entry => isRecord(entry) && entry.id === profile.id);
     const index = existing >= 0 ? existing : baseArray.length + appended++;
-    return { index, value: profile };
+    return { index, value: canonicalProfile(profile) };
   });
   // Index order is the canonical slot order everywhere: extractProjection
   // sorts by index and the verifier compares order-sensitively, so a
@@ -774,6 +777,28 @@ interface EndpointMatch {
   problems: string[];
 }
 
+/** Whole-array check against a recorded hash. A plan recorded before profile
+ *  values were canonicalized (or before a 0.16+ host rewrote their key) hashed
+ *  the owned entries as then written. Re-seating those recorded entries into
+ *  the observed array reproduces that hash exactly when the two arrays differ
+ *  only inside owned slots — and owned slots are compared canonically by the
+ *  callers. Order, count and every unrelated entry stay bound by the hash. */
+function profilesMatchRecordedHash(
+  observed: { present: boolean; value: unknown[] },
+  recorded: ProjectionValue,
+  sha256: string,
+): boolean {
+  const matches = (value: unknown[]) =>
+    profilesHashOf(observed.present, value) === sha256 ||
+    (value.length === 0 && profilesHashOf(!observed.present, value) === sha256);
+  if (matches(observed.value)) return true;
+  // The fallback itself requires every owned slot to hold the recorded entry
+  // in canonical form, so it never admits a changed owned profile.
+  return recorded.profiles.length > 0 &&
+    recorded.profiles.every(slot => canonicalEqual(observed.value[slot.index], canonicalProfile(slot.value))) &&
+    matches(applyOwnedSlots(observed.value, recorded.profiles));
+}
+
 /** Does raw JSON equal an endpoint projection + profile-array + unrelated hash? */
 function diskMatchesEndpoint(
   rawJson: unknown,
@@ -782,6 +807,8 @@ function diskMatchesEndpoint(
   unrelatedPersistedSha256: string,
 ): EndpointMatch {
   const problems: string[] = [];
+  const recorded = owned;
+  owned = canonicalProjection(owned);
   let observed: ProjectionValue;
   try {
     observed = extractProjection(rawJson, "OWNERSHIP_DRIFT", projectionProviderIds(owned));
@@ -832,11 +859,7 @@ function diskMatchesEndpoint(
   // compared semantically here — an empty array satisfies either recorded
   // presence value (§8.3). A non-empty array forces present anyway.
   const wholeProfiles = profilesArray(rawJson);
-  const wholeProfilesMatch =
-    profilesHashOf(wholeProfiles.present, wholeProfiles.value) === allProfilesSha256 ||
-    (wholeProfiles.value.length === 0 &&
-      profilesHashOf(!wholeProfiles.present, wholeProfiles.value) === allProfilesSha256);
-  if (!wholeProfilesMatch) {
+  if (!profilesMatchRecordedHash(wholeProfiles, recorded, allProfilesSha256)) {
     problems.push("daemon.agentProfiles (whole array)");
   }
   if (canonicalSha256(unrelatedPersistedView(rawJson, projectionProviderIds(owned))) !== unrelatedPersistedSha256) {
@@ -872,11 +895,7 @@ function liveMatchesEndpoint(
     }
   }
   const liveProfiles = effective.agentProfiles;
-  const liveProfilesMatch =
-    profilesHashOf(liveProfiles.present, liveProfiles.value) === allProfilesSha256 ||
-    (liveProfiles.value.length === 0 &&
-      profilesHashOf(!liveProfiles.present, liveProfiles.value) === allProfilesSha256);
-  if (!liveProfilesMatch) {
+  if (!profilesMatchRecordedHash(liveProfiles, owned, allProfilesSha256)) {
     problems.push("live agentProfiles");
   }
   const expectedInject = owned.injectIntoAgents.present ? owned.injectIntoAgents.value : false;
@@ -946,13 +965,15 @@ export function patchForDirection(
   kind: OperationKindValue,
   direction: "forward" | "inverse",
   freshRawJson: unknown,
+  liveConfig?: unknown,
 ): Record<string, unknown> {
   const owned = direction === "forward" ? plan.afterOwned : plan.before.owned;
   const injection = direction === "forward"
     ? (plan.afterOwned.injectIntoAgents.present ? plan.afterOwned.injectIntoAgents.value : false)
     : plan.before.effectiveInjection;
-  const baseArray = profilesArray(freshRawJson).value;
-  const desiredArray = applyOwnedSlots(baseArray, owned.profiles);
+  const base = profilesArray(freshRawJson);
+  const hostUsesOptions = base.usesOptionsKey || (liveConfig !== undefined && effectiveView(liveConfig).profilesUseOptionsKey);
+  const desiredArray = profilesForPatch(applyOwnedSlots(base.value, canonicalProjection(owned).profiles), hostUsesOptions);
   const providers: Record<string, unknown> = {};
   const removeProviders: string[] = [];
   for (const id of projectionProviderIds(owned)) {
@@ -1316,7 +1337,7 @@ export function planActivation(args: ActivationPlanArgs): PlanResult {
           { path: "daemon.agentProfiles" },
         );
       }
-      if (!canonicalEqual(existing[0], wanted)) {
+      if (!canonicalEqual(existing[0], canonicalProfile(wanted))) {
         throw new OperationConflict(
           "COLLISION",
           `profile ${wanted.id} exists with different content; it cannot be adopted`,
@@ -1371,7 +1392,7 @@ export function planActivation(args: ActivationPlanArgs): PlanResult {
     : {
         providers: desiredProviders,
         ...(removedProviderIds.length > 0 ? { removeProviders: removedProviderIds } : {}),
-        agentProfiles: desiredArray,
+        agentProfiles: profilesForPatch(desiredArray, rawProfiles.usesOptionsKey || effective.profilesUseOptionsKey),
         mcp: { injectIntoAgents: true },
       };
 
@@ -1487,7 +1508,7 @@ export function planDeactivation(args: DeactivationPlanArgs): PlanResult {
   for (let i = 0; i < binding.owned.profiles.length; i += 1) {
     const expected = binding.owned.profiles[i];
     const actual = observed.profiles[i];
-    if (expected.index !== actual.index || !canonicalEqual(expected.value, actual.value)) {
+    if (expected.index !== actual.index || !canonicalEqual(canonicalProfile(expected.value), actual.value)) {
       throw new OperationConflict(
         "OWNERSHIP_DRIFT",
         `owned profile ${binding.owned.profiles[i].value.id} was modified outside the journal; reconcile first`,
@@ -1532,7 +1553,7 @@ export function planDeactivation(args: DeactivationPlanArgs): PlanResult {
     ? null
     : {
         removeProviders: [...previouslyOwnedIds],
-        agentProfiles: desiredArray,
+        agentProfiles: profilesForPatch(desiredArray, profilesArray(raw.json).usesOptionsKey || effective.profilesUseOptionsKey),
         mcp: { injectIntoAgents: restoreTo },
       };
 

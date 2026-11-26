@@ -172,7 +172,9 @@ test('a revoked exact owner cannot replay its original reserve after event-time 
 test('actual role hook and deskMint consume one issued create ticket before exact scope bind',async t=>{
   const f=await coreFixture(t);
   const runtime={optionId:'fixture',catalogSha256:'a'.repeat(64)};
-  const seatPin={provider:'slp-codex-peer',model:'fixture',optionId:'fixture',catalogSha256:'a'.repeat(64)};
+  // The resolver always pins a features record, usually empty; a 0.16+ host
+  // drops an empty record before the create hook, which then observes null.
+  const seatPin={provider:'slp-codex-peer',model:'fixture',optionId:'fixture',catalogSha256:'a'.repeat(64),features:{}};
   const taskScope={label:'claimed writer',refs:['grant:scope'],ownership:{writerAgentId:'task-created-worker',writerAuthorityRef:null,
     paths:['src/core'],resources:[],stateOwners:[],dependsOnScopeIds:[],notifications:[]},
     reviewPlan:{kind:'not-required',authorityRef:'human:fixture',ruleRef:'protocol:proof',reason:'bounded test scope',lenses:[],exemptionClass:null}};

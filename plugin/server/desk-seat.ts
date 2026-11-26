@@ -20,6 +20,7 @@ import { spawnSync } from "node:child_process";
 import { z } from "zod";
 import type {
   PluginHookAgent,
+  PluginHookRequests,
   PluginLifecycleEvents,
   PluginSessionOpenRequest,
 } from "@getpaseo/plugin/server";
@@ -123,12 +124,18 @@ export const DESK_FIELD_POLICY = {
       internal: { cell: "IGNORED", note: "the daemon never calls the hook for internal agents (agent-manager.js:684 gates on !config.internal), so the hook never sees true" },
     },
     env: { cell: "JOIN", note: "only the SLP_DESK_HANDLE key: already present → env-collision, no mint; every other key IGNORED (not the desk's)" },
+    metadata: { cell: "IGNORED", note: "0.16 plugin-owned agent data; the desk stores nothing there and returns it unchanged" },
+    workspaceId: { cell: "IGNORED", note: "0.16 read-only create context; the row records the workspace at bind, which the host reports for every open" },
   },
   bind: {
     title: { cell: "IGNORED", note: "0.14 display metadata; no seat identity or authority" },
     labels: { cell: "IGNORED", note: "0.14 mutable metadata; membership uses the minted handle" },
     tools: { cell: "IGNORED", note: "0.14 per-session tools; not seat identity" },
     mcpServers: { cell: "IGNORED", note: "0.14 session configuration; bridge graft remains P2-d" },
+    background: { cell: "IGNORED", note: "0.16 display flag fixed at creation; the host rejects a changed value" },
+    metadata: { cell: "IGNORED", note: "0.16 plugin-owned agent data; not seat identity, and the host keeps its own copy" },
+    appendSystemPrompt: { cell: "IGNORED", note: "0.16 per-open instructions from other hooks; role bytes still ride the create-time systemPrompt" },
+    wrap: { cell: "IGNORED", note: "0.17 launch wrap selected by another plugin; the desk never selects or changes one" },
     agentId: { cell: "RECORD", note: "→ row.agentId; at most one live row per agentId (§3)" },
     workspaceId: { cell: "RECORD", note: "→ row.workspaceId (string or null). Not comparable: the create request carries only {config, env} (agent-manager.js:684-686), no workspace" },
     provider: { cell: "COMPARE_EXACT", note: "against row.provider" },
@@ -145,6 +152,8 @@ export const DESK_FIELD_POLICY = {
       provider: { cell: "COMPARE_EXACT", note: "against row.provider" },
       cwd: { cell: "COMPARE_EXACT", note: "realpath(cwd) against row.createCwd; also ROUTE — resolves the repo (§4.2)" },
       title: { cell: "IGNORED", note: "display label, mutable; not identity" },
+      background: { cell: "IGNORED", note: "0.16 display flag; not identity" },
+      metadata: { cell: "IGNORED", note: "0.16 plugin-owned agent data; mutable, not identity" },
     },
   },
   revoke: {
@@ -155,11 +164,13 @@ export const DESK_FIELD_POLICY = {
       provider: { cell: "IGNORED", note: "as above" },
       cwd: { cell: "ROUTE", note: "only to locate the ledger (§4.2)" },
       title: { cell: "IGNORED", note: "as above" },
+      background: { cell: "IGNORED", note: "as at register" },
+      metadata: { cell: "IGNORED", note: "as at register" },
     },
     archivedAt: { cell: "IGNORED", note: "one clock source: revokedAt = at (the server clock, which also orders the sweep). archivedAt is an unbounded Time with no consumer; P2-e reconciliation may add it" },
   },
 } as const satisfies {
-  mint: { config: Record<string, FieldRule>; env: FieldRule };
+  mint: { config: Record<string, FieldRule>; env: FieldRule; metadata: FieldRule; workspaceId: FieldRule };
   bind: Record<string, FieldRule>;
   register: { agent: Record<string, FieldRule> };
   revoke: { agent: Record<string, FieldRule>; archivedAt: FieldRule };
@@ -176,7 +187,7 @@ export type ExactKeys<P, T> =
 // W8 — the seven completeness pairs. Each alias is `true` only while the
 // policy branch's key set equals the SDK source's key set; adding or
 // removing a source field turns it `false` and `npm run typecheck` fails.
-export type MintCreateKeys = ExactKeys<typeof DESK_FIELD_POLICY.mint, { config: AgentSessionConfig; env?: Record<string, string> }>;
+export type MintCreateKeys = ExactKeys<typeof DESK_FIELD_POLICY.mint, PluginHookRequests["agent.create.before"]>;
 export type MintConfigKeys = ExactKeys<typeof DESK_FIELD_POLICY.mint.config, AgentSessionConfig>;
 export type BindKeys = ExactKeys<typeof DESK_FIELD_POLICY.bind, PluginSessionOpenRequest>;
 export type RegisterKeys = ExactKeys<typeof DESK_FIELD_POLICY.register, { agent: PluginHookAgent }>;
@@ -412,7 +423,8 @@ function validateTaskMembershipClaim(
       observedConfig.cwd !== attempt.placement.cwd || observedConfig.provider !== attempt.seatPin.provider ||
       observedConfig.model !== (attempt.seatPin.model ?? null) || observedConfig.modeId !== (attempt.seatPin.modeId ?? null) ||
       observedConfig.thinkingOptionId !== (attempt.seatPin.thinkingOptionId ?? null) ||
-      canonicalSha256(observedConfig.featureValues) !== canonicalSha256(attempt.seatPin.features ?? null) ||
+      // No options is one state: 0.16+ hosts drop an empty record before the hook runs.
+      canonicalSha256(observedConfig.featureValues ?? {}) !== canonicalSha256(attempt.seatPin.features ?? {}) ||
       canonicalSha256(body.seat) !== canonicalSha256(attempt.seatPin) || canonicalSha256(body.runtime) !== canonicalSha256(attempt.runtime) ||
       !isRecordValue(bodyLabels) || bodyLabels["slp.repo"] !== decisionContext.repoKey || bodyLabels["slp.assignment"] !== assignmentId ||
       bodyLabels["slp.task"] !== task.taskId || bodyLabels["slp.attempt"] !== attempt.attemptId || Object.hasOwn(bodyLabels, "slp.create-action") ||

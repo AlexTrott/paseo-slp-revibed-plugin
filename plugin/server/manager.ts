@@ -59,6 +59,8 @@ import {
   assertRawLiveAgreement,
   canonicalEqual,
   canonicalJson,
+  canonicalProfile,
+  canonicalProjection,
   isRecord,
   mcpFlagPresence,
   providersRecord,
@@ -1073,7 +1075,7 @@ export function createManager(deps: ManagerDeps): Manager {
         sameCandidate &&
         sameResolution &&
         patch === null &&
-        canonicalEqual(binding.owned, plan.afterOwned);
+        canonicalEqual(canonicalProjection(binding.owned), plan.afterOwned);
       const committed = transition(ctx, r => {
         const op = findOperation(r, opId);
         if (!op) throw new Error("operation vanished");
@@ -1613,7 +1615,7 @@ export function createManager(deps: ManagerDeps): Manager {
             // stays valid but the recorded position must track the array,
             // or the next deactivate compares against a stale index.
             const observedIndex = observed.profiles.find(s => s.value.id === slot.value.id)?.index;
-            if (!canonicalEqual(current, slot.value) || observedIndex !== slot.index) {
+            if (!canonicalEqual(current, canonicalProfile(slot.value)) || observedIndex !== slot.index) {
               pendingSlots = observed.profiles;
             }
           }
@@ -1866,7 +1868,7 @@ export function createManager(deps: ManagerDeps): Manager {
           }
           if (raw !== undefined) {
             const observed = extractProjection(raw.json, "OWNERSHIP_DRIFT", projectionProviderIds(binding.owned));
-            if (!canonicalEqual(observed, binding.owned)) {
+            if (!canonicalEqual(observed, canonicalProjection(binding.owned))) {
               throw new OperationConflict(
                 "OWNERSHIP_DRIFT",
                 "owned config projection diverges from the bound receipt",
@@ -2147,16 +2149,30 @@ export function createManager(deps: ManagerDeps): Manager {
           const recovery = findOperation(r, opId);
           if (rootKind === "activate") {
             const intended = plan.nextBinding!;
-            const postSha = canonicalSha256(
-              extractProjection(readRawConfig(ctx.configPath).json, "OWNERSHIP_DRIFT", projectionProviderIds(intended.owned)),
-            );
+            const observedOwned = extractProjection(readRawConfig(ctx.configPath).json, "OWNERSHIP_DRIFT", projectionProviderIds(intended.owned));
+            const postSha = canonicalSha256(observedOwned);
             // Recovery reinstates an already-pinned legacy artifact, rather
             // than rewriting its evidence as a newly verified current one.
             if (projectionProviderIds(intended.owned).length !== OWNED_PROVIDER_IDS.length) {
-              if (postSha !== intended.postPatchPersistedShapeSha256) throw new OperationConflict("OWNERSHIP_DRIFT", "historical recovery endpoint does not match its recorded projection digest");
+              if (postSha !== intended.postPatchPersistedShapeSha256 && postSha !== canonicalSha256(canonicalProjection(intended.owned))) throw new OperationConflict("OWNERSHIP_DRIFT", "historical recovery endpoint does not match its recorded projection digest");
               r.binding = intended;
-            } else {
+            } else if (postSha === canonicalSha256(intended.owned)) {
               r.binding = { ...intended, verifiedAt: now(), postPatchPersistedShapeSha256: postSha };
+            } else {
+              // The plan recorded its owned profiles before a 0.16+ host
+              // rewrote their option key (or dropped an empty record). The
+              // endpoint was classified canonically, so the binding records
+              // the projection as it is verified now, under its own digest.
+              if (!canonicalEqual(observedOwned, canonicalProjection(intended.owned))) {
+                throw new OperationConflict("OWNERSHIP_DRIFT", "recovery endpoint does not match its recorded owned projection");
+              }
+              r.binding = {
+                ...intended, owned: observedOwned, verifiedAt: now(), postPatchPersistedShapeSha256: postSha,
+                bindingSha256: canonicalSha256({
+                  candidateSha256: intended.candidateSha256, payloadSha256: intended.payloadSha256,
+                  launchSetSha256: intended.launchSetSha256, owned: observedOwned,
+                }),
+              };
             }
             r.state = "ACTIVE";
           } else {
@@ -2264,7 +2280,7 @@ export function createManager(deps: ManagerDeps): Manager {
             await verifyBindingFiles(ctx, plan.previousBinding);
           }
         }
-        const patch = patchForDirection(plan, rootKind, "forward", raw.json);
+        const patch = patchForDirection(plan, rootKind, "forward", raw.json, liveConfig);
         const settlement = await dispatchPatch(ctx, daemon, opId, patch);
         if (settlement === "threw") {
           throw new OperationConflict("IO_FAILURE", "config.patch threw before dispatch");
@@ -2311,7 +2327,7 @@ export function createManager(deps: ManagerDeps): Manager {
         if (plan.previousBinding) {
           await verifyBindingAssets(ctx, plan.previousBinding, "previous binding");
         }
-        const patch = patchForDirection(plan, rootKind, "inverse", raw.json);
+        const patch = patchForDirection(plan, rootKind, "inverse", raw.json, liveConfig);
         const settlement = await dispatchPatch(ctx, daemon, opId, patch);
         if (settlement === "threw") {
           throw new OperationConflict("IO_FAILURE", "config.patch threw before dispatch");

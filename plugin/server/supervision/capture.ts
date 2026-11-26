@@ -25,6 +25,7 @@ import { createHash } from "node:crypto";
 import { agentMessageOf } from "../delivered-input.ts";
 import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import type { PluginHookAgent, PluginLifecycleEvents } from "@getpaseo/plugin/server";
+import type { TurnEnded } from "../turn-history.ts";
 import { z } from "zod";
 import { familyFromProviderId, ROLES } from "../../shared/runtime/families.ts";
 import type { FamilyId } from "../../shared/runtime/families.ts";
@@ -34,7 +35,7 @@ import { ROLE_PREFIX_TERMINAL, SPAWN_KIT_PREFIX } from "../../shared/runtime/ses
 // Keep the capture module's published export for callers and retained tests.
 export { ROLE_PREFIX_TERMINAL };
 
-export type TurnEnded = PluginLifecycleEvents["agent.turn_ended"];
+export type { TurnEnded };
 export type TurnStarted = PluginLifecycleEvents["agent.turn_started"];
 
 /** Parser generation recorded with every assessment (ring metadata). */
@@ -696,7 +697,8 @@ export function capture(event: TurnEnded, activeLeads: { has(id: string): boolea
   if (!lead && !peer) return null;
   if (leadId === null) return null;
 
-  const turn = latestTurn(event.timeline);
+  const timeline = event.timeline ?? [];
+  const turn = latestTurn(timeline);
   const extraction = extractSends(family, turn);
   const sendKey = extraction.sends.map(send => [send.callId, send.input.state, send.outcome.state]);
 
@@ -717,7 +719,7 @@ export function capture(event: TurnEnded, activeLeads: { has(id: string): boolea
         issues: [...issues],
       };
     }
-    const { brief, handback } = peerMessages(family, event.timeline);
+    const { brief, handback } = peerMessages(family, timeline);
     // A completed Peer turn with NO observable communication is still a
     // case — "absent observable communication is unknown", and the gap must
     // be visible on the observation list, not silently dropped. Unverified
