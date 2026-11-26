@@ -42,7 +42,7 @@ For example: `Fix the checkout total rounding bug. Report back with the candidat
 
 Installing the plugin, or activating it, does not create any agent.
 
-See the [README](https://github.com/AlexTrott/paseo-slp-plugin#readme) for the full setup and operating guide.
+See the [README](https://github.com/AlexTrott/paseo-slp-revibed-plugin#readme) for the full setup and operating guide.
 
 ## Settings and limits
 
@@ -53,7 +53,7 @@ See the [README](https://github.com/AlexTrott/paseo-slp-plugin#readme) for the f
 - The plugin refuses to overwrite a provider or profile it does not own, and it stops with `RECOVERY_REQUIRED` when the configuration changed outside its journal.
 - Role rules guide agents. Repository and shell permissions still come from Paseo and the provider.
 - Grok uses the official Grok Build CLI over ACP. Sign in with `grok login` or provide `XAI_API_KEY` to the daemon; the wrapper completes noninteractive authentication before session discovery. Models and modes come from Grok's advertised catalog. See [Grok support](../docs/grok.md) for setup and evidence limits.
-- Antigravity supports full access only: its CLI automatically approves tools, subject to native policy denial. Thinking effort is part of the model ID. Its MCP integration supports stdio and Streamable HTTP; legacy SSE and explicit tool-policy preapproval are unsupported. Inherited native MCP services remain available; session routing does not sandbox tools. See [Antigravity support](https://github.com/AlexTrott/paseo-slp-plugin/blob/main/docs/antigravity.md) for resume restrictions and evidence limits.
+- Antigravity supports full access only: its CLI automatically approves tools, subject to native policy denial. Thinking effort is part of the model ID. Its MCP integration supports stdio and Streamable HTTP; legacy SSE and explicit tool-policy preapproval are unsupported. Inherited native MCP services remain available; session routing does not sandbox tools. See [Antigravity support](https://github.com/AlexTrott/paseo-slp-revibed-plugin/blob/main/docs/antigravity.md) for resume restrictions and evidence limits.
 
 ## Data, filesystem, subprocess and network access
 

@@ -150,8 +150,8 @@ You need:
 Any one supported provider CLI is sufficient. Available CLIs are discovered before activation.
 
 ```bash
-paseo plugin install git:AlexTrott/paseo-slp-plugin:plugin              # follow the default branch
-paseo plugin install git:AlexTrott/paseo-slp-plugin:plugin --ref <tag>  # or pin a release
+paseo plugin install git:AlexTrott/paseo-slp-revibed-plugin:plugin              # follow the default branch
+paseo plugin install git:AlexTrott/paseo-slp-revibed-plugin:plugin --ref <tag>  # or pin a release
 ```
 
 Check it with `paseo plugin ls`; `slp-revibed` should reach `running`. Installing changes no agent
@@ -162,8 +162,8 @@ configuration until you activate it.
 Use this to run your own clone, for example while changing the plugin.
 
 ```bash
-git clone https://github.com/AlexTrott/paseo-slp-plugin.git
-cd paseo-slp-plugin/plugin
+git clone https://github.com/AlexTrott/paseo-slp-revibed-plugin.git
+cd paseo-slp-revibed-plugin/plugin
 npm install --omit=dev                      # Paseo does not run this step for a directory install
 paseo daemon config set pluginsEnabled true # once per daemon, if plugins are not enabled yet
 paseo plugin install "$(pwd)"               # the plugin/ directory, as an absolute path
@@ -191,7 +191,7 @@ plugin does not reach `running`, `paseo plugin logs slp-revibed` shows why. Then
    and shows the full diff before writing.
 
    ```bash
-   npx skills add AlexTrott/paseo-slp-plugin --skill slp-revibed-onboarding
+   npx skills add AlexTrott/paseo-slp-revibed-plugin --skill slp-revibed-onboarding
    ```
 
 4. **Make the Peer pool ready.** If the repo inherits the shared pool, use **Peer pool** to
@@ -213,7 +213,7 @@ A few optional lines make an objective more robust:
 | `Heartbeat: …`     | Long work, e.g. `Heartbeat: sweep every 30m until handback`                         |
 
 No skills installed? Paste this into any agent: *"Help me set up SLP Revibed. Read
-https://raw.githubusercontent.com/AlexTrott/paseo-slp-plugin/main/docs/agent-guide.md first, then
+https://raw.githubusercontent.com/AlexTrott/paseo-slp-revibed-plugin/main/docs/agent-guide.md first, then
 walk me through it step by step."*
 
 ## Work records and review
@@ -261,7 +261,7 @@ paseo plugin reload slp-revibed               # directory install: after the che
 For a local checkout, pull the new code, refresh the dependencies and reload:
 
 ```bash
-cd /path/to/paseo-slp-plugin
+cd /path/to/paseo-slp-revibed-plugin
 git pull
 (cd plugin && npm install --omit=dev)
 paseo plugin reload slp-revibed

@@ -6,9 +6,7 @@
   "media": [
     "assets/intro-cross-workspace.jpg",
     "assets/intro-peer-dispositions.jpg",
-    "assets/intro-challenge-evidence.jpg",
-    "assets/screenshot-overview.png",
-    "assets/screenshot-peer-pool.png"
+    "assets/intro-challenge-evidence.jpg"
   ],
   "requirements": { "paseo": ">=0.11.0" },
   "build": [["npm", "install", "--omit=dev", "--no-audit", "--no-fund"]]

@@ -52,8 +52,6 @@ test('paseo-plugin.json parses through the host readPluginManifest', async t => 
       'assets/intro-cross-workspace.jpg',
       'assets/intro-peer-dispositions.jpg',
       'assets/intro-challenge-evidence.jpg',
-      'assets/screenshot-overview.png',
-      'assets/screenshot-peer-pool.png',
     ],
     requirements: { paseo: '>=0.11.0' },
     build: [['npm', 'install', '--omit=dev', '--no-audit', '--no-fund']],

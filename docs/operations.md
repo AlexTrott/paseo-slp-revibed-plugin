@@ -29,21 +29,21 @@ work:
 
 ```bash
 # From the repo — the plugin lives in the repo's plugin/ subdirectory:
-paseo plugin install AlexTrott/paseo-slp-plugin:plugin
+paseo plugin install AlexTrott/paseo-slp-revibed-plugin:plugin
 
 # Pin to a specific release:
-paseo plugin install AlexTrott/paseo-slp-plugin:plugin --ref v0.2.0
+paseo plugin install AlexTrott/paseo-slp-revibed-plugin:plugin --ref v0.2.0
 
 # From a local checkout (development):
 paseo plugin install /absolute/path/to/checkout/plugin
 ```
 
-`AlexTrott/paseo-slp-plugin` is GitHub shorthand; the source argument takes
+`AlexTrott/paseo-slp-revibed-plugin` is GitHub shorthand; the source argument takes
 anything `git clone` accepts, including a full HTTPS/SSH URL or
 `file:///absolute/path/to/checkout` for a local clone. The `:plugin` suffix
 selects the subdirectory. Without `--ref` the plugin follows the default
 branch and `paseo plugin update` pulls newer commits; pass `--ref` with a tag
-from [Releases](https://github.com/AlexTrott/paseo-slp-plugin/releases) to
+from [Releases](https://github.com/AlexTrott/paseo-slp-revibed-plugin/releases) to
 pin a specific version instead — tags and commits pin, branches move. The
 daemon checks out
 the ref into a managed directory under `$PASEO_HOME/plugins/slp-revibed/<id>/`
@@ -234,7 +234,7 @@ How an update reaches the daemon depends on how the plugin was installed —
 `paseo plugin ls` shows the source kind per plugin.
 
 **Git source following the default branch** — installed as
-`paseo plugin install AlexTrott/paseo-slp-plugin:plugin` without `--ref` —
+`paseo plugin install AlexTrott/paseo-slp-revibed-plugin:plugin` without `--ref` —
 updates through Paseo:
 
 ```bash
@@ -322,7 +322,7 @@ paseo plugin remove slp-revibed
 The onboarding skill teaches your agent how to set up this pack for a repo.
 
 ```bash
-npx skills add AlexTrott/paseo-slp-plugin --skill slp-revibed-onboarding
+npx skills add AlexTrott/paseo-slp-revibed-plugin --skill slp-revibed-onboarding
 ```
 
 - `slp-revibed-onboarding` — inspects the repo and recommends a protocol
@@ -342,7 +342,7 @@ No skills installed? Paste this into any agent:
 
 ```text
 Help me understand and set up SLP Revibed. Read
-https://raw.githubusercontent.com/AlexTrott/paseo-slp-plugin/main/docs/agent-guide.md
+https://raw.githubusercontent.com/AlexTrott/paseo-slp-revibed-plugin/main/docs/agent-guide.md
 first, then walk me through it step by step.
 ```
 
@@ -427,7 +427,7 @@ npx skills@latest add /absolute/path/to/paseo-slp \
 ```
 
 Once the package is published to GitHub, replace the local path with the
-published URL/repository, e.g. `AlexTrott/paseo-slp-plugin`. Use project
+published URL/repository, e.g. `AlexTrott/paseo-slp-revibed-plugin`. Use project
 mode or add `--global` as above; pass `--agent <name>` to target one agent instead of
 every detected one. Project skills land in `.agents/skills`, global skills
 in `~/.agents/skills`; Codex and Pi discover both scopes directly, and the

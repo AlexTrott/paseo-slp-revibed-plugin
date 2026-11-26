@@ -1,6 +1,6 @@
 ---
 version: '15'
-owner: 'duongvm (Human)'
+owner: 'AlexTrott (Human)'
 applies_to: 'slp-revibed source repository'
 last_reviewed: '2026-10-07'
 package_version: '0.4.0'
