@@ -2,7 +2,7 @@
   "name": "slp-revibed",
   "private": true,
   "license": "MIT",
-  "version": "0.0.0",
+  "version": "0.10.0",
   "description": "SLP Revibed: Supervisor, Lead and Peer agent teams for Paseo",
   "dependencies": {
     "@getpaseo/protocol": "0.17.5",
