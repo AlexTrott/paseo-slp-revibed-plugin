@@ -157,6 +157,23 @@ paseo plugin install git:AlexTrott/paseo-slp-plugin:plugin --ref <tag>  # or pin
 Check it with `paseo plugin ls`; `slp-revibed` should reach `running`. Installing changes no agent
 configuration until you activate it.
 
+### Installing from a local checkout
+
+Use this to run your own clone, for example while changing the plugin.
+
+```bash
+git clone https://github.com/AlexTrott/paseo-slp-plugin.git
+cd paseo-slp-plugin/plugin
+npm install --omit=dev                      # Paseo does not run this step for a directory install
+paseo daemon config set pluginsEnabled true # once per daemon, if plugins are not enabled yet
+paseo plugin install "$(pwd)"               # the plugin/ directory, as an absolute path
+paseo plugin ls                             # slp-revibed should reach running
+```
+
+Paseo loads the plugin straight from that directory, so keep the checkout where it is. If the
+plugin does not reach `running`, `paseo plugin logs slp-revibed` shows why. Then continue with
+[First run](#first-run).
+
 ## First run
 
 1. **Open SLP** in Paseo's sidebar (or *Open SLP Overview* from the command palette).
@@ -239,6 +256,15 @@ repo-pinned pool.
 paseo plugin update slp-revibed               # git source on the default branch
 paseo plugin update slp-revibed --ref <tag>   # pinned: choose the new ref explicitly
 paseo plugin reload slp-revibed               # directory install: after the checkout changes
+```
+
+For a local checkout, pull the new code, refresh the dependencies and reload:
+
+```bash
+cd /path/to/paseo-slp-plugin
+git pull
+(cd plugin && npm install --omit=dev)
+paseo plugin reload slp-revibed
 ```
 
 After an update or reload, open the settings screen and run **Update SLP runtime** when it offers
