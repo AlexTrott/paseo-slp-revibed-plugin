@@ -561,12 +561,12 @@ const STATE_TONE: Record<string, keyof Colors> = {
   DEACTIVATING: "accent",
   RECOVERY_REQUIRED: "statusWarning",
 };
-export function StatePill({ colors, state }: { colors: Colors; state: string | null }) {
+export function StatePill({ colors, state, label }: { colors: Colors; state: string | null; label?: string }) {
   const tone = state ? STATE_TONE[state] ?? "foregroundMuted" : "foregroundMuted";
   const color = colors[tone];
   return (
     <View style={[styles.pill, { borderColor: color }]}>
-      <Text style={[styles.pillLabel, { color }]}>{state ?? "unknown"}</Text>
+      <Text style={[styles.pillLabel, { color }]}>{label ?? state ?? "unknown"}</Text>
     </View>
   );
 }
@@ -650,6 +650,15 @@ export const styles = StyleSheet.create({
   selectBoxRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingVertical: 10, paddingHorizontal: 11 },
   selectBoxLink: { fontSize: 12, fontWeight: "600" },
   modelList: { borderTopWidth: 1, padding: 10, gap: 6 },
+  // Guidance wave — role explainer cards, the recommendation callout, the
+  // numbered setup path and full-width attention banners.
+  guideCard: { borderWidth: 1, borderRadius: 9, padding: 16, gap: 12, flexBasis: 280, flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: "100%" },
+  guideBody: { fontSize: 13, lineHeight: 19 },
+  recommendBox: { borderLeftWidth: 3, borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12, gap: 3 },
+  stepRow: { borderWidth: 1, borderRadius: 9, padding: 12, gap: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
+  stepMarker: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  stepMarkerLabel: { fontSize: 13, fontWeight: "700" },
+  banner: { borderWidth: 1, borderLeftWidth: 4, borderRadius: 9, padding: 14, gap: 10 },
 });
 
 

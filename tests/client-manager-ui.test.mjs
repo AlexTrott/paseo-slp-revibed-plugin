@@ -200,7 +200,7 @@ for (const family of FAMILY_IDS) {
       assert.ok(rig.calls.some(call => call.name === 'catalog' && call.input.family === family && call.input.role === role));
     }
     assert.ok(!rig.calls.some(call => ['activate', 'set-role-routing'].includes(call.name)));
-    assert.match(JSON.stringify(rig.renderer.toJSON()), /no Maintenance step is needed/);
+    assert.match(JSON.stringify(rig.renderer.toJSON()), /Each button opens the screen for that step/);
   });
 }
 
@@ -483,7 +483,7 @@ test('all manager sections and binding retain completed reads on reopen while fr
   const fields = card('RoutingCard').findAll(node => node.type.name === 'Field' && ['Mode', 'Feature values (JSON)', 'Thinking option'].includes(node.props.label));
   assert.equal(fields.length, 0, 'cached option controls remain; no transient raw editors');
   assert.ok(JSON.stringify(renderer.toJSON()).includes('Refreshing provider options'));
-  assert.equal(renderer.toJSON().children[1].type, 'View', 'a conditional refresh banner must not insert a row above Binding');
+  assert.equal(renderer.toJSON().children[1].type, 'SettingsSelect', 'a conditional refresh banner must not insert a row between the header and the section switcher');
   const headerReadStatus = () => renderer.root.findAll(node => node.type === 'Text' && node.props.accessibilityLiveRegion === 'polite'
     && typeof node.props.accessibilityLabel === 'string' && node.props.accessibilityLabel.includes(' on Fixture'))[0];
   assert.equal(headerReadStatus().props.numberOfLines, 1);
@@ -503,13 +503,13 @@ test('all manager sections and binding retain completed reads on reopen while fr
   await act(async () => statusCall.resolve(reads.status));
   assert.deepEqual(renderer.toJSON().children.slice(0, 2).map(node => node.type), rootPrefix, 'fresh completion must not remove an intervening layout row');
   assert.equal(headerReadStatus().props.numberOfLines, 1);
-  assert.equal(headerReadStatus().props.accessibilityLabel, 'Runtime and work settings on Fixture');
+  assert.equal(headerReadStatus().props.accessibilityLabel, 'Supervisor, Lead and Peer setup on Fixture');
   assert.equal(headerReadStatus().props.accessibilityHint, undefined);
   assert.equal(renderer.root.findAll(node => node.type.name === 'LanguageCard')[0].props.disabled, false, 'successful fresh status releases its write guard');
   await act(async () => renderer.root.findAll(node => node.props.label === 'Refresh' && typeof node.props.onPress === 'function')[0].props.onPress());
   const failedRefresh = deferred.calls.filter(call => call.input.name === 'status').at(-1);
   await act(async () => failedRefresh.reject(new Error('runtime refresh unavailable')));
-  assert.equal(headerReadStatus().props.accessibilityLabel, 'Runtime read unavailable on Fixture');
+  assert.equal(headerReadStatus().props.accessibilityLabel, 'Could not read SLP status on Fixture');
   assert.equal(renderer.root.findAll(node => node.type.name === 'LanguageCard')[0].props.disabled, true, 'refresh failure never grants writes from retained status');
   assert.ok(JSON.stringify(renderer.toJSON()).includes('runtime refresh unavailable'));
   assert.ok(JSON.stringify(renderer.toJSON()).includes(A), 'failed status refresh does not erase the displayed binding');
@@ -591,7 +591,7 @@ test('manual Refresh after a fresh read keeps the header row stable and revokes 
   assert.equal(language().props.disabled, true);
   assert.deepEqual(rig.renderer.toJSON().children.slice(0, 2).map(node => node.type), before);
   await act(async () => rig.reads.calls[1].resolve(runtime()));
-  assert.equal(subtitle().props.accessibilityLabel, 'Runtime and work settings on Fixture host');
+  assert.equal(subtitle().props.accessibilityLabel, 'Supervisor, Lead and Peer setup on Fixture host');
   assert.equal(language().props.disabled, false);
   assert.deepEqual(rig.renderer.toJSON().children.slice(0, 2).map(node => node.type), before);
 });

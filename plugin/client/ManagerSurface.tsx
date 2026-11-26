@@ -96,6 +96,8 @@ const AUTHORITY = { exclusiveAdministrativeWindow: true, verifiedHostHomeMapping
 import { MANAGER_SECTIONS, managerSection } from "./manager-navigation.ts";
 import type { ManagerSectionId } from "./manager-navigation.ts";
 import { RuntimeIdentity } from "./runtime-overview.tsx";
+import { ConflictBanner, ROLE_GUIDE, RoleGuideCard, SetupChecklist, friendlyState } from "./guide.tsx";
+import type { SetupStep } from "./guide.tsx";
 
 // ---------------------------------------------------------------------------
 // Surface
@@ -155,6 +157,7 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showMaintenance, setShowMaintenance] = useState(false);
   const [statusDetailsOpen, setStatusDetailsOpen] = useState(false);
+  const [conflictDetailsOpen, setConflictDetailsOpen] = useState(false);
 
   // In-surface section tabs (mockup sidebar → tab strip): a press switches
   // the active section — inactive sections stay mounted under display:none
@@ -521,9 +524,10 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
 
   const confirmationControls = () => <>
     <CheckRow colors={colors} checked={exclusiveWindow} onToggle={setExclusiveWindow}
-      title="Exclusive configuration window" hint="No other writers may edit daemon configuration while an operation runs" />
+      title="Exclusive configuration window" hint="Nothing else is changing Paseo settings right now — not the app, another plugin, the CLI or a manual file edit" />
     <CheckRow colors={colors} checked={mappingConfirmed} onToggle={setMappingConfirmed} disabled={!target}
-      title="Daemon home confirmed" hint={target ? `${target.daemonHome} is the home of this daemon` : "Detect or configure the daemon home first"} />
+      title="Daemon home confirmed" hint={target ? `${target.daemonHome} is the Paseo home folder I want SLP to change` : "Detect or configure the daemon home first"} />
+    <Text style={[styles.guideBody, { color: colors.foreground }]}>Why the two checks: SLP edits Paseo's shared configuration file, and Paseo cannot lock it. If something else writes at the same moment, one change can be lost.</Text>
     <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>{EXCLUSIVE_WINDOW_NOTICE}</Text>
   </>;
 
@@ -557,38 +561,93 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
     void runOperation(() => callDeactivate(input), input.operationId);
   };
 
-  const headerSubtitle = `${statusFresh ? "Runtime and work settings" : view.lastError ? "Runtime read unavailable" : statusView ? "Updating saved view" : "Reading runtime"} on ${host.label}`;
+  const headerSubtitle = `${statusFresh ? "Supervisor, Lead and Peer setup" : view.lastError ? "Could not read SLP status" : statusView ? "Updating saved view" : "Reading SLP status"} on ${host.label}`;
+  const friendly = friendlyState(statusView);
+  const runtimeOutdated = statusView?.binding != null && statusView.binding.candidateSha256 !== statusView.embeddedCandidateSha256;
+  const profileSummary = (role: "supervisor" | "lead"): string => {
+    if (!statusView?.binding) return "Not set up yet";
+    if (!routing.ready) return "Reading…";
+    const form = routing.form[role];
+    return `${FAMILY_LABEL[form.family]} · ${form.model || "provider default model"}`;
+  };
+  const savedPool = pool.poolData?.pool ?? null;
+  const enabledSeats = savedPool ? savedPool.options.filter(option => option.enabled).length : 0;
+  const poolSummary = savedPool
+    ? `${enabledSeats} of ${savedPool.options.length} ${savedPool.options.length === 1 ? "entry" : "entries"} enabled`
+    : pool.poolData ? "No pool saved yet" : "Reading…";
+  const availableLabels = availableFamilies.map(family => FAMILY_LABEL[family]);
+  const profilesDone = statusView?.binding != null && routing.stored && !routing.diverged;
+  const setupSteps: SetupStep[] = [
+    { id: "providers", title: "Install a coding agent", done: availableFamilies.length > 0,
+      detail: !statusView ? "Checking which agent CLIs are installed…" : availableFamilies.length > 0
+        ? `Found ${availableLabels.join(", ")}. SLP runs its roles on these.`
+        : "No supported agent CLI was found. Install one (for example Claude Code or Codex), then press Refresh." },
+    { id: "activate", title: "Turn SLP on", done: statusView?.binding != null,
+      detail: statusView?.binding ? "SLP's providers and profiles are installed in Paseo."
+        : "Adds the SLP Supervisor and SLP Lead profiles to Paseo. You confirm two safety checks first; nothing else in your configuration is touched.",
+      actionLabel: statusView?.binding ? undefined : "Turn SLP on", onAction: () => setActiveSection("maintenance") },
+    { id: "profiles", title: "Choose models for Supervisor and Lead", done: profilesDone,
+      detail: routing.saved && (saveApplyBusy || view.pending) ? view.pending?.uncertain ? "Saved; Apply outcome unconfirmed" : "Saved; Apply operation in progress"
+        : routing.dirty ? "You have unsaved changes — open Profiles and save."
+        : profilesDone ? `Supervisor: ${profileSummary("supervisor")}. Lead: ${profileSummary("lead")}.`
+        : routing.diverged ? "Your saved choices are not applied yet — open Profiles and save."
+        : `${ROLE_GUIDE.lead.tier} for the Lead; ${ROLE_GUIDE.supervisor.tier.toLowerCase()} for the Supervisor.`,
+      actionLabel: profilesDone ? "Change" : "Choose models", onAction: () => setActiveSection("profiles") },
+    { id: "pool", title: "Give the Lead a pool of Peers", done: enabledSeats > 0,
+      detail: pool.poolReadError ? "The Peer pool could not be read — open Peer pool to retry."
+        : pool.poolDirty ? "You have unsaved changes — open Peer pool and save."
+        : enabledSeats > 0 ? `${poolSummary}. The Lead picks from these for each task.`
+        : "Without an enabled Peer the Lead has nobody to delegate to. Start from the five presets and assign a model to each one you want.",
+      actionLabel: enabledSeats > 0 ? "Change" : "Set up Peers", onAction: () => setActiveSection("pool") },
+  ];
+  const setupDone = setupSteps.every(step => step.done);
   return (
     <ScrollView
       style={{ backgroundColor: colors.surface0 }}
       contentContainerStyle={{ padding: compact ? 12 : 24, gap: compact ? 12 : 16, width: "100%", maxWidth: 1120, alignSelf: "center" }}
     >
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text style={[styles.pageTitle, { color: colors.foreground }]}>SLP</Text>
+      <View style={[styles.headerRow, { flexWrap: "wrap", alignItems: "center" }]}>
+        <View style={compact ? { width: "100%", gap: 4 } : { flex: 1, minWidth: 200, gap: 4 }}>
+          <Text style={[styles.pageTitle, { color: colors.foreground }]}>SLP Revibed</Text>
           <Text numberOfLines={1} ellipsizeMode="tail" accessibilityLiveRegion="polite"
             accessibilityLabel={headerSubtitle} accessibilityHint={!statusFresh ? "Writes wait for a fresh read." : undefined}
             style={[styles.muted, { color: colors.foregroundMuted }]}>
             {headerSubtitle}
           </Text>
         </View>
-        <StatePill colors={colors} state={statusView?.state ?? null} />
+        <StatePill colors={colors} state={statusView?.state ?? null} label={friendly.label} />
+        <Button
+          colors={colors}
+          label="Refresh"
+          onPress={() => { if (target) void refresh(target, view.pending?.operationId); }}
+          disabled={!target || view.busy}
+        />
       </View>
 
-      <RuntimeIdentity colors={colors} statusView={statusView} home={home} />
-
-        <>
-        {view.lastError ? <Text selectable style={[styles.muted, { color: colors.statusDanger }]}>{view.lastError}</Text> : null}
-        {view.notice ? <Text selectable style={[styles.muted, { color: colors.foregroundMuted }]}>{view.notice}</Text> : null}
-        {view.pending ? <KV colors={colors} label="Tracked operation" value={view.pending.operationId} /> : null}
-        {view.pending?.uncertain && view.pending.retryAllowed ? <View style={{ gap: 6 }}>
-          <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>The original ID is not recorded in the latest journal read. Retry sends the identical request with that ID; it does not create a replacement.</Text>
-          <Button colors={colors} label="Retry original operation" disabled={!canRetryOriginal} onPress={retryOriginalOperation} />
-        </View> : null}
-        {conflictList.length > 0 ? <Card colors={colors} title="Conflicts · inspect before changing configuration">
-          {conflictLines(conflictList).map((line, index) => <Text key={index} selectable style={[styles.mutedSmall, { color: colors.statusDanger }]}>{line}</Text>)}
-        </Card> : null}
-        </>
+      {!home ? <Text style={[styles.mutedSmall, { color: colors.statusWarning }]}>
+        Paseo's home folder was not detected — enter it under Maintenance → Advanced.
+      </Text> : null}
+      {view.lastError && statusView ? <Text style={[styles.mutedSmall, { color: colors.statusWarning }]}>Showing the last status that was read. Press Refresh to check the current state.</Text> : null}
+      {view.lastError ? <Text selectable style={[styles.muted, { color: colors.statusDanger }]}>{view.lastError}</Text> : null}
+      {view.notice ? <Text selectable style={[styles.muted, { color: colors.foregroundMuted }]}>{view.notice}</Text> : null}
+      {view.busy ? <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>Working…</Text> : null}
+      {view.pending ? <KV colors={colors} label="Tracked operation" value={view.pending.operationId} /> : null}
+      {view.pending?.uncertain && view.pending.retryAllowed ? <View style={{ gap: 6 }}>
+        <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>The original ID is not recorded in the latest journal read. Retry sends the identical request with that ID; it does not create a replacement.</Text>
+        <Button colors={colors} label="Retry original operation" disabled={!canRetryOriginal} onPress={retryOriginalOperation} />
+      </View> : null}
+      {statusView && stateHint(statusView.state) ? <Text style={[styles.muted, { color: colors.statusWarning }]}>{stateHint(statusView.state)}</Text> : null}
+      <ConflictBanner colors={colors} conflicts={conflictList} technical={conflictLines(conflictList, compact ? 4 : 8)}
+        open={conflictDetailsOpen} onToggle={() => setConflictDetailsOpen(open => !open)} onMaintenance={() => setActiveSection("maintenance")} />
+      {runtimeOutdated && activeSection !== "maintenance" ? (
+        <View style={[styles.banner, { borderColor: colors.statusWarning, backgroundColor: colors.surface1 }]}>
+          <Text style={[styles.checkTitle, { color: colors.foreground }]}>An SLP update is ready to apply</Text>
+          <Text style={[styles.guideBody, { color: colors.foregroundMuted }]}>
+            This plugin is newer than the SLP runtime Paseo is using. Apply it so new agents get the current role policies; running agents are not interrupted.
+          </Text>
+          <Button colors={colors} label="Review update" onPress={() => setActiveSection("maintenance")} />
+        </View>
+      ) : null}
 
       <Modal title="Save and apply profiles" open={saveConfirmationOpen} onOpenChange={setSaveConfirmationOpen}>
         <Modal.Content>
@@ -645,78 +704,60 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
             })}
           </View></View>
 
-      <Card
+      <View style={sectionShown("overview")}><Card
         colors={colors}
-        title="Inspect selected host"
-        subtitle="Read-only inspection. Refresh after changing the binding or configuration."
+        title={setupDone ? "You're set up" : "Get started"}
+        subtitle={setupDone
+          ? "Start an agent with the SLP Supervisor profile for hands-off work, or SLP Lead to direct the work yourself."
+          : "Four steps, in order. Each button opens the screen for that step."}
+        trailing={<Badge colors={colors} tone={setupDone ? "good" : "draft"} label={`${setupSteps.filter(step => step.done).length} of ${setupSteps.length} done`} />}
       >
-        {home ? (
-          <KV colors={colors} label="Daemon home" value={home} />
-        ) : (
-          <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>
-            Daemon home not detected — configure one under Advanced.
-          </Text>
-        )}
-        <Button
-          colors={colors}
-          label={statusView ? "Refresh" : "Inspect"}
-          onPress={() => { if (target) void refresh(target, view.pending?.operationId); }}
-          disabled={!target || view.busy}
-        />
-      </Card>
+        <SetupChecklist colors={colors} steps={setupSteps} />
+      </Card></View>
 
-      {view.lastError && statusView ? <Text style={[styles.mutedSmall, { color: colors.statusWarning }]}>Last status read retained. Refresh to verify current state.</Text> : null}
-      {view.lastError && !statusView ? <Text selectable style={[styles.muted, { color: colors.statusDanger }]}>{view.lastError}</Text> : null}
+      <View style={sectionShown("overview")}><Card
+        colors={colors}
+        title="How SLP works"
+        subtitle="You talk to the Supervisor. It hands the work to a Lead, who splits it up and delegates each piece to a Peer."
+      >
+        <View style={styles.profileGrid}>
+          <RoleGuideCard colors={colors} role="supervisor" current={profileSummary("supervisor")} actionLabel="Choose model" onAction={() => setActiveSection("profiles")} />
+          <RoleGuideCard colors={colors} role="lead" current={profileSummary("lead")} actionLabel="Choose model" onAction={() => setActiveSection("profiles")} />
+          <RoleGuideCard colors={colors} role="peer" current={poolSummary} actionLabel="Manage Peers" onAction={() => setActiveSection("pool")} />
+        </View>
+      </Card></View>
+
       {statusView ? (
         <View style={sectionShown("overview")}><Card
           colors={colors}
-          title="Runtime status"
-          subtitle={stateHint(statusView.state) || undefined}
+          title="Coding agents on this machine"
+          subtitle="SLP can run its roles on any agent marked available. Install a missing one and press Refresh to use it."
         >
-          {statusView.state === "INACTIVE" && !statusView.binding ? (
-            <Text style={[styles.muted, { color: colors.foreground }]}>
-              Get started: open Profiles, choose a provider and model for each role, then Save profiles to activate SLP. Provider discovery runs automatically; no Maintenance step is needed.
-            </Text>
-          ) : null}
-          {statusRows(statusView, { full: true })
-            .filter(row => !STATUS_DETAIL_LABELS.has(row.label) && !["Embedded candidate", "Active candidate", "Daemon home (canonical)"].includes(row.label))
-            .map(row => (
-              <KV key={row.label} colors={colors} label={row.label} value={row.value} />
-            ))}
-          <View style={{ gap: 6 }}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Provider families</Text>
-            <View style={styles.chipRow}>
-              {statusView.families.map(family => (
-                <View
-                  key={family.family}
-                  style={[
-                    styles.chip,
-                    { borderColor: family.availability === "available" ? colors.statusSuccess : colors.statusWarning },
-                  ]}
-                >
-                  <Text style={[styles.chipLabel, { color: colors.foreground }]}>
-                    {FAMILY_LABEL[family.family]} · {familyHint(family, { compact: true })}
+          <View style={styles.chipRow}>
+            {statusView.families.map(family => {
+              const available = family.availability === "available";
+              return (
+                <View key={family.family} style={[styles.chip, { borderColor: available ? colors.statusSuccess : colors.border }]}>
+                  <Text style={[styles.chipLabel, { color: available ? colors.foreground : colors.foregroundMuted }]}>
+                    {available ? "✓ " : ""}{FAMILY_LABEL[family.family]}{available ? "" : ` · ${family.availability === "unresolved" ? "not checked" : "not installed"}`}
                   </Text>
                 </View>
-              ))}
-            </View>
+              );
+            })}
           </View>
-          {statusView.operation ? (
-            <KV
-              colors={colors}
-              label="Last operation"
-              value={`${statusView.operation.kind} · ${statusView.operation.outcome}`}
-            />
-          ) : null}
+          <KV colors={colors} label="Reply language" value={statusView.communicationLanguage ?? "Model default"} />
           <Collapse
             colors={colors}
-            title="Details"
-            subtitle="Runtime paths, hashes, and operation metadata"
+            title="Technical details"
+            subtitle="Versions, paths, hashes and the last operation"
             open={statusDetailsOpen}
             onToggle={() => setStatusDetailsOpen(open => !open)}
           >
+            {statusView.families.filter(family => family.availability === "available").map(family => (
+              <KV key={family.family} colors={colors} label={FAMILY_LABEL[family.family]} value={familyHint(family)} />
+            ))}
             {statusRows(statusView, { full: true })
-              .filter(row => STATUS_DETAIL_LABELS.has(row.label))
+              .filter(row => row.label !== "Communication language")
               .map(row => (
                 <KV key={row.label} colors={colors} label={row.label} value={row.value} />
               ))}
@@ -726,32 +767,8 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
                 ))
               : null}
           </Collapse>
-          {view.pending ? <KV colors={colors} label="Polling" value={`operation ${view.pending.operationId}`} /> : null}
-          {view.busy ? <KV colors={colors} label="Busy" value="start call in flight" /> : null}
-          {view.notice ? <KV colors={colors} label="Note" value={view.notice} /> : null}
-          {view.lastError ? (
-            <Text style={[styles.mutedSmall, { color: colors.statusDanger }]}>{view.lastError}</Text>
-          ) : null}
-          {conflictList.length > 0 ? (
-            <View style={[styles.conflictBox, { borderColor: colors.statusDanger }]}>
-              <Text style={[styles.fieldLabel, { color: colors.statusDanger }]}>
-                {conflictList.length} conflict{conflictList.length === 1 ? "" : "s"}
-              </Text>
-              {conflictLines(conflictList, compact ? 4 : 8).map((line, index) => (
-                <Text key={index} style={[styles.mutedSmall, { color: colors.foreground }]} selectable>
-                  {line}
-                </Text>
-              ))}
-            </View>
-          ) : null}
         </Card></View>
       ) : null}
-
-      <View style={sectionShown("overview")}><Card colors={colors} title="Configuration" subtitle="Drafts stay here while you switch sections. Save each editor explicitly.">
-        <KV colors={colors} label="Profiles" value={routing.saved ? saveApplyBusy || view.pending ? view.pending?.uncertain ? "Saved; Apply outcome unconfirmed" : "Saved; Apply operation in progress" : "Saved; inspect latest Apply result" : routing.dirty ? "Unsaved draft" : routing.diverged ? "Saved profiles differ from binding" : "Inspect Profiles for saved and applied settings"} />
-        <KV colors={colors} label="Peer pool" value={pool.poolReadError ? "Read unavailable" : pool.poolDirty ? "Unsaved draft" : pool.poolData?.error ? "Pool unavailable" : pool.poolData ? pool.poolData.pool ? "Saved pool; read at next formation" : "No saved pool" : "Awaiting pool read"} />
-        <View style={styles.chipRow}>{MANAGER_SECTIONS.filter(section => section.id !== "overview" && section.id !== "maintenance").map(section => <Button key={section.id} colors={colors} label={`Open ${section.label.toLowerCase()}`} onPress={() => setActiveSection(section.id)} />)}</View>
-      </Card></View>
 
       {/* Keep the Profiles frame mounted while the first read is pending. */}
         <View style={sectionShown("profiles")}>
@@ -809,12 +826,17 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
         </View>
       ) : null}
 
-      <View style={sectionShown("maintenance")}>
-      <Card colors={colors} title="Runtime setup" subtitle="Initial activation, runtime updates and recovery. Saving Profiles applies its choices automatically.">
+      <View style={[{ gap: compact ? 12 : 16 }, sectionShown("maintenance")]}>
+      <Card colors={colors} title="Runtime setup"
+        subtitle={!statusView?.binding ? "Turn SLP on for this Paseo install. Tick both checks, then activate."
+          : runtimeOutdated ? "Apply the SLP runtime that ships with this plugin. Tick both checks, then update."
+          : "SLP is on and up to date. Saving Profiles applies its choices automatically, so you rarely need this."}>
         {confirmationControls()}
         <Button colors={colors} kind="primary" label={activationLabel(statusView)} onPress={runActivate}
           disabled={!canMutate || !statusView || routing.busy} />
       </Card>
+
+      <RuntimeIdentity colors={colors} statusView={statusView} home={home} />
 
       <Collapse
         colors={colors}
@@ -866,8 +888,8 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
 
       <Collapse
         colors={colors}
-        title="Maintenance"
-        subtitle="Drift inspection, interrupted operations, and deactivation"
+        title="Repair and removal"
+        subtitle="Check for outside changes, finish an interrupted change, or turn SLP off"
         open={showMaintenance}
         onToggle={setShowMaintenance}
       >
@@ -885,7 +907,9 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
             disabled={!canMutate}
           />
           <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>
-            Inspect is read-only; Complete and Restore before finish an interrupted operation
+            {reconcileAction === "inspect" ? "Inspect only reads: it compares Paseo's configuration with what SLP last wrote and reports any difference."
+              : reconcileAction === "complete" ? "Complete finishes an interrupted change, moving forward to what it was trying to apply."
+              : "Restore before rolls an interrupted change back to how things were before it started."}
           </Text>
         </View>
         {reconcileAction !== "inspect" ? (
@@ -908,6 +932,7 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
         <View style={[styles.divider, { borderTopColor: colors.border }]} />
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Deactivate</Text>
+          <Text style={[styles.guideBody, { color: colors.foreground }]}>Turns SLP off: removes the SLP providers and the SLP Supervisor and SLP Lead profiles from Paseo. Your other settings and any running agents are left alone.</Text>
           <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>{RESTORATION_NOTICE}</Text>
           <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>{RETAINED_RUNTIME_NOTICE}</Text>
           <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>{DISABLE_REMOVE_NOTICE}</Text>

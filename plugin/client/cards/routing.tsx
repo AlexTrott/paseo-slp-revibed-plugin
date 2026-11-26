@@ -33,6 +33,7 @@ import {
 import type { RoutingRoleForm } from "../manager-state.ts";
 import type { Colors } from "../ui-kit.tsx";
 import { Button, Card, ChipSelect, Field, OptionPicker, styles, SwitchRow } from "../ui-kit.tsx";
+import { ROLE_GUIDE, RoleRecommendation } from "../guide.tsx";
 
 const sameRoleForm = (a: RoutingRoleForm, b: RoutingRoleForm): boolean =>
   a.family === b.family &&
@@ -265,6 +266,7 @@ export function useRoutingCard({ target, targetKey, isCurrentKey, statusView, ca
     dirty: routingDirty,
     busy: routingBusy,
     saved: routingSaved,
+    stored: routing != null,
     differs,
     diverged,
     featureKeys: [featureKeyFor("supervisor"), featureKeyFor("lead")] as (string | null)[],
@@ -315,7 +317,7 @@ export function RoutingCard({ colors, target, statusView, routing, catalogs, cat
     <Card
       colors={colors}
       title="Role profiles"
-      subtitle="Choose each role's provider, model, mode, features and thinking option. Save profiles saves and applies your choices to future launches."
+      subtitle="Pick the agent and model behind each role. Saving applies your choices to agents you start from now on; running agents keep theirs."
     >
       <View
         style={styles.profileGrid}
@@ -338,10 +340,10 @@ export function RoutingCard({ colors, target, statusView, routing, catalogs, cat
               <Text style={[styles.profileRole, { color: colors.foreground }]}>
                 {role === "supervisor" ? "SLP Supervisor" : "SLP Lead"}
               </Text>
-              <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>
-                {role === "supervisor" ? "Supervision and review" : "Task planning and delegation"}
-              </Text>
+              <Text style={[styles.mutedSmall, { color: colors.accent }]}>{ROLE_GUIDE[role].tagline}</Text>
+              <Text style={[styles.guideBody, { color: colors.foregroundMuted }]}>{ROLE_GUIDE[role].does}</Text>
             </View>
+            <RoleRecommendation colors={colors} role={role} />
             <View style={styles.field}>
               <Text style={[styles.legend, { color: colors.foregroundMuted }]}>Provider family</Text>
               <ChipSelect
@@ -570,8 +572,7 @@ export function RoutingCard({ colors, target, statusView, routing, catalogs, cat
       })}
       </View>
       <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>
-        Peers use the pool: the bound desk resolves a seat server-side or requests an
-        independent Lead choice. The picks above configure Supervisor and Lead.
+        Peers are not set here — the Lead picks them from the Peer pool tab.
       </Text>
       {routing.diverged ? (
         <Text style={[styles.mutedSmall, { color: colors.statusWarning }]}>
@@ -587,7 +588,7 @@ export function RoutingCard({ colors, target, statusView, routing, catalogs, cat
       ) : null}
       {!statusView?.binding ? (
         <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>
-          Activate first — role profiles are saved against a live binding.
+          Activate first: turn SLP on from Overview → Get started. You can draft choices here, but saving needs SLP to be on.
         </Text>
       ) : null}
       <Button

@@ -10,6 +10,10 @@ import type { PeerSeatForm } from '../manager-state.ts';
 import { Badge, Button, Card, CheckRow, ChipSelect, Collapse, Field, OptionPicker, SwitchRow, styles } from '../ui-kit.tsx';
 import type { Colors } from '../ui-kit.tsx';
 import type { PeerPoolCardState } from './peer-pool.tsx';
+import { RoleRecommendation } from '../guide.tsx';
+
+/** First sentence of a preset's "when to use" text, for the collapsed row. */
+const firstSentence = (text: string | undefined): string => (text ?? '').split(/(?<=[.:])\s/)[0]!.replace(/[.:]$/, '');
 
 export function LegacyPeerPoolNotice({ colors }: { colors: Colors }) {
   return <View style={[styles.noticeBox, { borderColor: colors.statusWarning }]}>
@@ -44,7 +48,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
   const migration = pool.poolData?.pool?.version === 1;
   const edit = <K extends keyof PeerSeatForm>(index: number, key: K, value: PeerSeatForm[K]) => pool.updatePool(form => ({ ...form,
     seats: form.seats.map((seat, i) => i === index ? { ...seat, [key]: value } : seat) }));
-  return <Card colors={colors} title="Peer pool" subtitle="Five starter presets, or add your own. You configure models; Lead chooses a preset and supported effort for the assignment."
+  return <Card colors={colors} title="Peer pool" subtitle="Peers do the hands-on work. Each preset below is one kind of Peer the Lead may pick for a task: give the ones you want a provider and model, switch them on, then save."
     trailing={<Badge colors={colors} label={pool.poolDirty ? 'Unsaved changes' : pool.poolData?.pool ? 'Saved pool' : 'Unsaved starter presets'} tone={pool.poolDirty ? 'draft' : 'neutral'} />}>
     {pool.poolReadError || pool.poolData?.error ? <Text style={{ color: colors.statusWarning }}>{pool.poolReadError ?? pool.poolData?.error}</Text> : null}
     {pool.poolData !== null && !pool.fresh ? <Text style={{ color: colors.foregroundMuted }}>Refreshing pool; previous data is read-only.</Text> : null}
@@ -56,6 +60,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
       <Button colors={colors} label="Copy original v1 backup" onPress={() => { void pool.copyStoredV1(); }} disabled={pool.poolBusy} />
       <Button colors={colors} label="Cancel migration preview" onPress={pool.cancelPresetMigration} disabled={pool.poolBusy} />
     </View> : null}
+    <RoleRecommendation colors={colors} role="peer" />
     <DefaultPresetControls colors={colors} pool={pool} />
     {pool.poolDefaultsDraft ? <Text style={{ color: colors.foreground }}>5 default presets are ready to configure. Choose a provider and model, then enable the presets you want before saving.</Text> : null}
     {pool.canImportLegacy ? <Button colors={colors} label="Import legacy pool instead" onPress={pool.importLegacyPool} disabled={disabled} /> : null}
@@ -69,7 +74,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
       const features = pool.featureDefsForSeat(seat);
       const toggle = () => pool.setOpenSeat(pool.openSeat === index ? null : index);
       return <Collapse key={seat.uid} colors={colors} title={seat.displayName || 'Unnamed preset'}
-        subtitle={seat.enabled ? `${seat.family || 'No provider'} / ${seat.model || 'No model'}` : 'Disabled'} open={pool.openSeat === index} onToggle={toggle}>
+        subtitle={`${seat.enabled ? `On · ${seat.family ? FAMILY_LABEL[seat.family] : 'no provider'} · ${seat.model || 'no model'}` : 'Off'}${firstSentence(seat.description) ? ` — ${firstSentence(seat.description)}` : ''}`} open={pool.openSeat === index} onToggle={toggle}>
         <Field colors={colors} label="Preset name" value={seat.displayName ?? ''} onChangeText={value => edit(index, 'displayName', value)} disabled={disabled} />
         <Field colors={colors} label="When to use" hint="Lead reads your description. Edit in any language; the preset name is not a fixed routing class."
           value={seat.description ?? ''} onChangeText={value => edit(index, 'description', value)} disabled={disabled} multiline />
