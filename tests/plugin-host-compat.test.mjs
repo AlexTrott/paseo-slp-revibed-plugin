@@ -12,7 +12,6 @@ import {
 import { classifyState } from '../plugin/server/config-transaction.ts';
 import { Receipt } from '../plugin/shared/contracts.ts';
 import { OWNED_PROVIDER_IDS } from '../plugin/shared/runtime/families.ts';
-import { lifecycleHooks } from '../plugin/server/lifecycle-hooks.ts';
 import { createRoleInjection } from '../plugin/server/role-injection.ts';
 import { DESK_TASK_CREATE_TICKET_KEY } from '../plugin/server/desk-seat.ts';
 import { readTurnHistory } from '../plugin/server/turn-history.ts';
@@ -86,34 +85,6 @@ test('a profile divergence on a 0.16+ host names the startup-migration remedy', 
     { daemon: { agentProfiles: [{ ...base, featureValues: { x: 1 } }] } },
     effectiveView({ mcp: { enabled: true }, agentProfiles: [{ ...base, options: { x: 1 }, featureValues: { x: 1 } }] })),
   'a file not yet rewritten by a 0.16+ host agrees with what that host serves');
-});
-
-test('lifecycle hooks register through addHook when the host offers it, else the legacy pair', () => {
-  const calls = [];
-  const off = () => {};
-  const handler = () => {};
-  const modern = lifecycleHooks({
-    addHook: (name, fn) => { calls.push(['addHook', name, fn]); return off; },
-    on: () => assert.fail('legacy on must not be used beside addHook'),
-    before: () => assert.fail('legacy before must not be used beside addHook'),
-  });
-  assert.equal(modern.on('agent.turn_ended', handler), off);
-  modern.on('agent.created', handler); modern.on('agent.archived', handler); modern.on('agent.turn_started', handler);
-  modern.before('agent.create', handler); modern.before('agent.session_open', handler);
-  assert.deepEqual(calls.map(([kind, name]) => [kind, name]), [
-    ['addHook', 'agent.turn.after'], ['addHook', 'agent.create.after'], ['addHook', 'agent.archive.after'],
-    ['addHook', 'agent.turn.before'], ['addHook', 'agent.create.before'], ['addHook', 'agent.open.before'],
-  ]);
-  assert.ok(calls.every(([, , fn]) => fn === handler), 'handlers pass through unwrapped: payloads are identical');
-
-  calls.length = 0;
-  const legacy = lifecycleHooks({
-    on: (name, fn) => { calls.push(['on', name, fn]); return off; },
-    before: (name, fn) => { calls.push(['before', name, fn]); return off; },
-  });
-  legacy.on('agent.turn_ended', handler); legacy.before('agent.create', handler);
-  assert.deepEqual(calls, [['on', 'agent.turn_ended', handler], ['before', 'agent.create', handler]]);
-  assert.throws(() => lifecycleHooks({}).on('agent.created', handler), /neither addHook nor the legacy on/);
 });
 
 test('a turn-ended payload without a timeline key reads history instead of throwing', async () => {

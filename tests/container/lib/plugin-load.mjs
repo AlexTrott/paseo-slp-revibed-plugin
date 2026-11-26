@@ -30,8 +30,10 @@ eq(typeof contribute, 'function', 'index.server.ts default export is the contrib
 const registrations = [], beforeHooks = [], onHooks = [], unregistered = [];
 const server = {
   handle: (contract, handler) => registrations.push({ name: contract.name, handler }),
-  before: (name, handler) => { beforeHooks.push(name); return () => unregistered.push(name); },
-  on: (name, handler) => { onHooks.push(name); return () => unregistered.push(name); },
+  addHook: (name, handler) => {
+    (name.endsWith('.before') && name !== 'agent.turn.before' ? beforeHooks : onHooks).push(name);
+    return () => unregistered.push(name);
+  },
 };
 const cleanup = contribute(server);
 eq(typeof cleanup, 'function', 'contribute() returns a cleanup function');
@@ -45,14 +47,10 @@ eq(registrations.map(r => r.name).sort(), [
 ], 'full RPC surface registered');
 if (registrations.some(r => typeof r.handler !== 'function')) fail('a registered RPC handler is not a function');
 ok('every RPC handler is callable');
-eq(beforeHooks.sort(), ['agent.create', 'agent.create', 'agent.session_open', 'agent.session_open'],
+eq(beforeHooks.sort(), ['agent.create.before', 'agent.create.before', 'agent.open.before', 'agent.open.before'],
   'role-injection + desk-bridge before-hook pairs registered in order');
-// PASEO_HOME is exported and config.json exists → the shadow observer is
-// verified → observer lifecycle hooks land on top of the desk handshake pair.
-eq(onHooks.sort(), [
-  'agent.archived', 'agent.archived', 'agent.created', 'agent.created',
-  'agent.turn_ended', 'agent.turn_ended', 'agent.turn_started', 'agent.turn_started',
-], 'observer + task/context + desk handshake lifecycle hooks registered');
+eq(onHooks.sort(), ['agent.archive.after', 'agent.create.after', 'agent.turn.after', 'agent.turn.before'],
+  'task/context + desk handshake lifecycle hooks registered');
 if (beforeHooks.length + onHooks.length === 0) fail('no hooks registered');
 ok('hook surface non-empty');
 cleanup();

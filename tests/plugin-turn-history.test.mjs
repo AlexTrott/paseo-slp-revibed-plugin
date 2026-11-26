@@ -11,13 +11,6 @@ const api = (result, calls = []) => ({ agents: { ref(id) { return { timeline: { 
   calls.push({ id, options }); return typeof result === 'function' ? result() : result;
 } } }; } } });
 
-test('legacy turn payload stays untouched and never reads history', async () => {
-  const original = event({ timeline: [{ type: 'assistant_message', text: 'original' }] });
-  const calls = [];
-  assert.equal(await readTurnHistory(original, api(page(), calls)), original);
-  assert.equal(calls.length, 0);
-});
-
 test('empty hooks fetch only the exact ended turn, excluding older and newer turns', async () => {
   const calls = [];
   const response = page({ hasOlder: true, entries: [row('older', 'old'), row('ended', 'brief'),

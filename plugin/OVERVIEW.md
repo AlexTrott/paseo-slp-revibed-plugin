@@ -67,7 +67,7 @@ See the [README](https://github.com/AlexTrott/paseo-slp-revibed-plugin#readme) f
 
 ## Requirements
 
-- Paseo daemon and app 0.11.0 or later (minimum supported host, not the pinned SDK version), with plugins enabled and MCP enabled.
+- Paseo daemon and app 0.17.5 or later, with plugins enabled and MCP enabled.
 - A Linux or macOS daemon host. Windows is not supported.
 - Node.js 22.18 or later in the 22 line, or Node.js 23.6 or later, for native TypeScript.
 - The CLI of each provider family you use, signed in on the daemon host.

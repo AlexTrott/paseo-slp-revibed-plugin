@@ -18,7 +18,7 @@ a "no plugin change" outcome.
 | `@getpaseo/server` | unpinned host; CI/container parity 0.17.5 | 0.17.5 | Persisted config, config store, option controls, plugin lifecycle, agent create path and plugin-provider registry read; ACP adapter skimmed; web bundles and other internals not audited | 2026-11-26 | Breaking for 0.15.4-era SLP (profile `options`, empty-record drop, `providerOptions` fold); adapted. Host renames of Codex `fast_mode` / Claude `ultracode` are refused with a remedy, not mirrored |
 | `@getpaseo/cli` | unpinned host; CI/container 0.17.5 | 0.17.5 | `plugin install/ls/reload/logs` and `daemon run/config set` exercised on a scratch daemon; package not diffed | 2026-11-26 | CI/container parity pins updated; no CLI adaptation |
 
-`requirements.paseo` in `plugin/paseo-plugin.json` is `>=0.11.0` for native
+`requirements.paseo` in `plugin/paseo-plugin.json` is `>=0.17.5` since 2026-11-26 (it was `>=0.11.0` before), for native
 screen/sidebar support on daemon and app. Keep the field present. That current
 API floor does not extend the assessed runtime evidence in the table above.
 Updating SDK dependencies or documentation never proves live compatibility.

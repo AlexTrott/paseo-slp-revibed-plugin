@@ -138,9 +138,9 @@ candidate proof and required independent review still apply; a tiny task grants 
 
 You need:
 
-- **Paseo 0.17.5** daemon and app, the version this plugin is developed and tested against, with
-  `pluginsEnabled: true` and an effective `mcp.enabled: true`. The manifest still admits hosts
-  from 0.11.0, but older hosts are not tested here.
+- **Paseo 0.17.5 or later**, daemon and app, with `pluginsEnabled: true` and an effective
+  `mcp.enabled: true`. 0.17.5 is the version this plugin is developed and tested against;
+  older hosts are refused by the manifest.
 - a POSIX daemon host (Linux/macOS), with Node.js 22.x from 22.18, or Node.js 23.6+
   (native TypeScript stripping)
 - the CLI of each provider family you use (Codex, Pi, Devin, Claude, OpenCode, Antigravity, Grok),

@@ -53,7 +53,7 @@ test('paseo-plugin.json parses through the host readPluginManifest', async t => 
       'assets/intro-peer-dispositions.jpg',
       'assets/intro-challenge-evidence.jpg',
     ],
-    requirements: { paseo: '>=0.11.0' },
+    requirements: { paseo: '>=0.17.5' },
     build: [['npm', 'install', '--omit=dev', '--no-audit', '--no-fund']],
   });
 });
@@ -236,12 +236,8 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
     handle(contract, handler) {
       registrations.push({ name: contract.name, handler });
     },
-    before(name, handler) {
-      beforeHooks.push({ name, handler });
-      return () => unregistered.push(name);
-    },
-    on(name, handler) {
-      onHooks.push({ name, handler });
+    addHook(name, handler) {
+      (name.endsWith('.before') && name !== 'agent.turn.before' ? beforeHooks : onHooks).push({ name, handler });
       return () => unregistered.push(name);
     },
   };
@@ -276,7 +272,7 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
   // contract, so names sort identically and duplicates are expected.
   assert.deepEqual(
     beforeHooks.map(h => h.name).sort(),
-    ['agent.create', 'agent.create', 'agent.session_open', 'agent.session_open'],
+    ['agent.create.before', 'agent.create.before', 'agent.open.before', 'agent.open.before'],
   );
   for (const { handler } of beforeHooks) {
     assert.equal(typeof handler, 'function');
@@ -285,7 +281,7 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
   // SDK-stash turn-started handlers: one registration per event.
   assert.deepEqual(
     onHooks.map(h => h.name).sort(),
-    ['agent.archived', 'agent.created', 'agent.turn_ended', 'agent.turn_started'],
+    ['agent.archive.after', 'agent.create.after', 'agent.turn.after', 'agent.turn.before'],
   );
   for (const { handler } of onHooks) {
     assert.equal(typeof handler, 'function');
@@ -295,14 +291,14 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
   assert.deepEqual(
     unregistered.sort(),
     [
-      'agent.archived',
-      'agent.create',
-      'agent.create',
-      'agent.created',
-      'agent.session_open',
-      'agent.session_open',
-      'agent.turn_ended',
-      'agent.turn_started',
+      'agent.archive.after',
+      'agent.create.after',
+      'agent.create.before',
+      'agent.create.before',
+      'agent.open.before',
+      'agent.open.before',
+      'agent.turn.after',
+      'agent.turn.before',
     ],
   );
   assert.doesNotThrow(() => cleanup(), 'cleanup must be idempotent');
@@ -348,8 +344,10 @@ test('turn_started stashes the SDK for Desk without the optional observer and cl
   const server = {
     registerProvider() {},
     handle() {},
-    before() { return () => {}; },
-    on(name, handler) { registrations.push({ name, handler }); return () => unregistered.push(name); },
+    addHook(name, handler) {
+      if (name.endsWith('.before') && name !== 'agent.turn.before') return () => {};
+      registrations.push({ name, handler }); return () => unregistered.push(name);
+    },
   };
   const cleanup = contribute(server);
   assert.equal(deskProbe.deps.taskHost(), null, 'a resumed ACP turn has no SDK slot before its lifecycle start callback');
@@ -358,7 +356,7 @@ test('turn_started stashes the SDK for Desk without the optional observer and cl
   // observation, and nothing else.
   assert.deepEqual(
     registrations.map(r => r.name).sort(),
-    ['agent.archived', 'agent.created', 'agent.turn_ended', 'agent.turn_started'],
+    ['agent.archive.after', 'agent.create.after', 'agent.turn.after', 'agent.turn.before'],
     'only desk lifecycle registers',
   );
   // (c) provenance: driving each handler with an slp-* payload over a
@@ -372,11 +370,11 @@ test('turn_started stashes the SDK for Desk without the optional observer and cl
   const slpEvent = {
     agent: { id: 'agent-1', workspaceId: null, parentAgentId: null, provider: 'slp-codex-peer', cwd: plainDir, title: null },
   };
-  const expectedOp = { 'agent.created': 'register', 'agent.archived': 'revoke' };
+  const expectedOp = { 'agent.create.after': 'register', 'agent.archive.after': 'revoke' };
   for (const { name, handler } of registrations) {
     assert.equal(typeof handler, 'function');
-    if (name === 'agent.turn_started') continue;
-    if (name === 'agent.turn_ended') {
+    if (name === 'agent.turn.before') continue;
+    if (name === 'agent.turn.after') {
       const before = warnings.length;
       await handler({ agent: slpEvent.agent, turnId: 'fixture-turn', outcome: { kind: 'completed' }, timeline: [] }, {});
       assert.equal(warnings.length, before, 'unbound task observation stays inert');
@@ -388,7 +386,7 @@ test('turn_started stashes the SDK for Desk without the optional observer and cl
     await handler({ agent: { ...slpEvent.agent, provider: 'custom-tool' } }, {});
     assert.equal(warnings.length, beforeSilent, 'a non-slp provider is a silent no-op');
   }
-  const started = registrations.filter(row => row.name === 'agent.turn_started');
+  const started = registrations.filter(row => row.name === 'agent.turn.before');
   assert.equal(started.length, 1, 'the SDK stash registers even though observer is absent');
   const identity = { id: 'agent-1', provider: 'slp-codex-peer', cwd: plainDir, workspaceId: null };
   const paseo = {
@@ -411,7 +409,7 @@ test('turn_started stashes the SDK for Desk without the optional observer and cl
     'every console.warn from construction through the drive is exactly the two desk diagnostics',
   );
   cleanup();
-  assert.equal(unregistered.filter(name => name === 'agent.turn_started').length, 1, 'cleanup unregisters the independent SDK stash hook');
+  assert.equal(unregistered.filter(name => name === 'agent.turn.before').length, 1, 'cleanup unregisters the independent SDK stash hook');
   assert.equal(deskProbe.stopCalls, 1);
 });
 
@@ -425,8 +423,7 @@ test('the catalog RPC passes per-model thinking options through to CatalogOutput
   const cleanup = contribute({
     registerProvider: () => {},
     handle: (contract, handler) => registrations.push({ name: contract.name, handler }),
-    before: () => () => {},
-    on: () => () => {},
+    addHook: () => () => {},
   });
   t.after(() => cleanup());
   const catalogHandler = registrations.find(r => r.name === 'catalog')?.handler;

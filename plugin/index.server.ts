@@ -5,7 +5,6 @@
 import { readTurnHistory } from "./server/turn-history.ts";
 import { deliveryTimelineItem } from "./server/delivered-input.ts";
 import type { PluginServerContribution } from "@getpaseo/plugin/server";
-import { lifecycleHooks } from "./server/lifecycle-hooks.ts";
 import { realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { activate, reconcile, deactivate, status, localTarget, catalog, setLanguage, getRoleRouting, setRoleRouting, getPeerPool, setPeerPool } from "./shared/contracts.ts";
@@ -142,28 +141,27 @@ export default function contribute(server: Parameters<PluginServerContribution>[
     deskMint: deskSeat.deskMint,
     deskBind: deskSeat.deskBind,
   });
-  const hooks = lifecycleHooks(server);
-  const offAgentCreate = hooks.before("agent.create", injection.agentCreate);
-  const offSessionOpen = hooks.before("agent.session_open", injection.sessionOpen);
+  const offAgentCreate = server.addHook("agent.create.before", async input => injection.agentCreate(input));
+  const offSessionOpen = server.addHook("agent.open.before", async input => injection.sessionOpen(input));
   // P2-c registration confirm + revoke — separate handlers on the same
   // events the shadow observer uses; the observer's registrations are
   // untouched. Both fail-open, never reject.
-  const offDeskRegister = hooks.on("agent.created", event => deskSeat.deskRegister(event));
-  const offDeskRevoke = hooks.on("agent.archived", event => deskSeat.deskRevoke(event));
+  const offDeskRegister = server.addHook("agent.create.after", async event => { await deskSeat.deskRegister(event); });
+  const offDeskRevoke = server.addHook("agent.archive.after", async event => { await deskSeat.deskRevoke(event); });
   // P2-d hook registrations — ordered AFTER role-injection's hooks above:
   // before-handlers compose sequentially in registration order, so the
   // graft sees request.env already carrying the minted SLP_DESK_HANDLE.
   // The session_open stash only supplies the connected SDK (no request
   // change — the host rejects non-env changes anyway).
-  const offBridgeGraft = hooks.before("agent.create", (input, ctx) => {
+  const offBridgeGraft = server.addHook("agent.create.before", async (input, ctx) => {
     noteTaskApi(ctx.paseo);
     return deskBridge.agentCreateGraft(input, ctx);
   });
-  const offBridgeStash = hooks.before("agent.session_open", (input, ctx) => {
+  const offBridgeStash = server.addHook("agent.open.before", async (input, ctx) => {
     noteTaskApi(ctx.paseo);
     return deskBridge.sessionOpenStash(input, ctx);
   });
-  const offTaskEnded = hooks.on("agent.turn_ended", async (event, { paseo, signal }) => {
+  const offTaskEnded = server.addHook("agent.turn.after", async (event, { paseo, signal }) => {
     noteTaskApi(paseo);
     deskBridge.notePaseo(paseo);
     if (!OWNED_PROVIDER_ID_RE.test(event.agent.provider)) return;
@@ -178,7 +176,7 @@ export default function contribute(server: Parameters<PluginServerContribution>[
   // session_open or turn_ended handler has supplied this process's SDK slot.
   // Keep this unconditional and independent of the optional observer; it
   // stashes host identity context only and never marks plugin-RPC evidence.
-  const offDeskContextStart = hooks.on("agent.turn_started", (_event, { paseo }) => {
+  const offDeskContextStart = server.addHook("agent.turn.before", async (_event, { paseo }) => {
     noteTaskApi(paseo);
     deskBridge.notePaseo(paseo);
   });

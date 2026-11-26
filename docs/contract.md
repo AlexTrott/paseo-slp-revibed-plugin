@@ -170,8 +170,8 @@ read the effective source protocol. No global role is written into AGENTS.md.
 
 ## Installation and restoration
 
-The manifest requires Paseo daemon and app `>=0.11.0` for native screen/sidebar
-APIs. This gate belongs to plugin loading: an incompatible import can fail
+The manifest requires Paseo daemon and app `>=0.17.5`, the oldest host this
+fork is tested against. This gate belongs to plugin loading: an incompatible import can fail
 before repository protocol or harness instructions are consulted. The range
 is an API boundary, not a claim that every later host was tested.
 

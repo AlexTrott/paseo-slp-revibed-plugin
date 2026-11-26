@@ -154,7 +154,7 @@ Which test covers which area, from what each file imports:
 | `plugin/server/antigravity/*` | `plugin-antigravity`, `plugin-antigravity-mcp` |
 | `bin/grok-role.mjs`, `runtime/cli/grok-acp.ts` | `grok` |
 | `plugin/server/delivered-input.ts` | `plugin-delivered-input`, `plugin-desk-delivery` |
-| `plugin/server/lifecycle-hooks.ts`, `turn-history.ts`, profile/option host seams | `plugin-host-compat`, `plugin-turn-history` |
+| `plugin/server/turn-history.ts`, profile/option host seams | `plugin-host-compat`, `plugin-turn-history` |
 | `plugin/client/*` (cards, catalog demand, workflow panel, manager state) | `client-catalog-demand`, `client-target-async`, `client-workflow-view`, `plugin-ui`; hooks load through `tests/helpers/*-entry.mts` |
 | `plugin/server/runtime/cli/*` (install, launch, inventory, monitor, notebook, host config, profiles, package) | `install`, `local`, `materialize`, `launch`, `inventory`, `monitor`, `notebook`, `runtime-core-install` |
 | `plugin/server/runtime/cli/candidate-verify.ts`, `report-records.ts`, `report-semantics.ts` | `candidate-verify`, `verify-handback-cli`, `report-records` |
@@ -187,10 +187,8 @@ both boundaries are visible. Missing turn IDs, truncated history, timeout or
 archive during the read leave the observation unverified. This adapter does
 not establish Desk delivery acceptance.
 
-Host-version seams are single functions: `lifecycleHooks`
-(`plugin/server/lifecycle-hooks.ts`) registers through `addHook` where the
-host offers it and the legacy `on`/`before` pair on 0.11–0.13;
-`canonicalProfile` (`plugin/server/config-view.ts`) and `readableProfile`
+Hooks register through `addHook` only; the manifest floor is Paseo 0.17.5.
+The remaining host seams are single functions: `canonicalProfile` (`plugin/server/config-view.ts`) and `readableProfile`
 (offline CLI) fold a saved profile's `options`/`featureValues` into one form;
 `createOptions` (`role-injection.ts`) does the same for create-hook options.
 `tests/plugin-host-compat.test.mjs` covers them. Run the host-parity tests
@@ -228,8 +226,8 @@ claims need a deliberately exercised fault boundary and native timeline.
 
 `./tests/container/run` builds a disposable image pinned to Paseo 0.17.5 and
 exercises installation, retained runtime loading and contributor registration.
-It needs Docker and outbound network. [Container instructions](../tests/container/README.vi.md)
-separate fake-home install/load checks from a real disposable daemon serve.
+It needs Docker and outbound network. `./tests/container/run` is the fake-home
+install/load check; `./tests/container/serve` runs a real disposable daemon.
 The stubbed contribution check is a local adapter check; it cannot prove real
 host loading, UI behavior or agent compliance. The container route supplements
 `npm test` under the [install acceptance decision](decisions/2026-10-01-container-install-acceptance.md).

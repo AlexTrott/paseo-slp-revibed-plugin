@@ -7,7 +7,7 @@
 FROM node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
 
 # Pinned Paseo CLI/daemon. The version must satisfy the plugin manifest
-# (plugin/paseo-plugin.json requirements.paseo: >=0.11.0); it is baked
+# (plugin/paseo-plugin.json requirements.paseo: >=0.17.5); it is baked
 # into the image and re-asserted inside the container at acceptance time.
 ARG PASEO_CLI_VERSION=0.17.5
 ENV SLP_PASEO_CLI_VERSION=${PASEO_CLI_VERSION}

@@ -8,6 +8,6 @@
     "assets/intro-peer-dispositions.jpg",
     "assets/intro-challenge-evidence.jpg"
   ],
-  "requirements": { "paseo": ">=0.11.0" },
+  "requirements": { "paseo": ">=0.17.5" },
   "build": [["npm", "install", "--omit=dev", "--no-audit", "--no-fund"]]
 }
