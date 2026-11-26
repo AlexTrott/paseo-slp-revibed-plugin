@@ -9,7 +9,6 @@ import { presetOptionError } from "./runtime/peer-presets.ts";
 
 import { z } from "zod";
 import { defineRpc } from "@getpaseo/plugin";
-import { JEV_TRANSPORTS } from "./runtime/jev-transport.ts";
 import { swe2ModelPattern } from "./runtime/model-constraints.ts";
 import { FAMILY_IDS, OWNED_PROVIDER_ID_RE, PROVIDER_EXTENDS_IDS, ROLES, persistedProviderIds, persistedFamilyIds, familyFromProviderId, familyUsesRegistration } from "./runtime/families.ts";
 
@@ -239,14 +238,8 @@ const POOL_SETTING_ID = /^[a-zA-Z0-9._-]+$/;
 const POOL_UNSAFE_MODEL = /[\s\x00-\x1f\x7f]/;
 const poolNonempty = (s: string) => s.trim().length > 0;
 
-/** The Jev decline sentinel (plugin/server/runtime/cli/routing.ts ROUTE_DECLINE_CANDIDATE) — a
- *  seat may never take it as an id; validateCatalog rejects it the same way. */
-export const ROUTE_DECLINE_OPTION_ID = "no-suitable-option";
-
 export const PeerPoolOption = z.object({
-  id: z.string().regex(/^[a-z][a-z0-9-]*$/).refine(id => id !== ROUTE_DECLINE_OPTION_ID, {
-    message: `id is reserved for the Jev decline sentinel`,
-  }),
+  id: z.string().regex(/^[a-z][a-z0-9-]*$/),
   provider: z.union([Family, z.literal("")]),
   roles: z.array(z.enum(["supervisor", "lead", "peer"])).min(1),
   model: z.string().refine(v => !POOL_UNSAFE_MODEL.test(v)),
@@ -372,109 +365,6 @@ export const SetPeerPoolOutput = z.object({
   /** sha256 of the written file — the next expectedSha256 token. */
   sha256: Sha,
 }).strict();
-/** Jev provider block stored at slp-runtime/state/jev.json — two kinds.
- *  openrouter: model must be a pinned `<owner>/jev-<version>` id; aliases
- *  (~typesafe/jev-latest, jev-latest, jev-preview) drift and are rejected.
- *  baseUrl accepts the bare origin or the documented prefixed form …/api/v1.
- *  typesafe (first-party, verified against docs.typesafe.ai): model is a
- *  pinned bare `jev-<semver>` id; baseUrl accepts a bare https origin or an
- *  origin+path prefix (custom endpoint/proxy). Both require https and reject
- *  query/hash (parity with plugin/server/runtime/cli/jev.ts readJevConfig); absent baseUrl → the
- *  kind's default origin. */
-const jevBaseUrl = (allowPath: (path: string) => boolean) =>
-  z.string().min(1).max(512)
-    .refine(s => {
-      try {
-        const u = new URL(s);
-        return u.protocol === "https:" && allowPath(u.pathname.replace(/\/+$/, "")) && u.search === "" && u.hash === "";
-      } catch { return false; }
-    });
-export const JevProvider = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("openrouter"),
-    baseUrl: jevBaseUrl(JEV_TRANSPORTS.openrouter.baseUrlPathAllowed).default(JEV_TRANSPORTS.openrouter.defaultBaseUrl),
-    model: z.string().regex(JEV_TRANSPORTS.openrouter.modelPattern),
-  }).strict(),
-  z.object({
-    kind: z.literal("typesafe"),
-    baseUrl: jevBaseUrl(JEV_TRANSPORTS.typesafe.baseUrlPathAllowed).default(JEV_TRANSPORTS.typesafe.defaultBaseUrl),
-    model: z.string().regex(JEV_TRANSPORTS.typesafe.modelPattern),
-  }).strict(),
-]);
-/** Per-daemon Jev config — all toggles default off; capabilities is a bool
- *  record so a future capability arrives without a schema bump (a missing
- *  capability defaults to off, matching plugin/server/runtime/cli/jev.ts). Stored as
- *  jev.json (0600); the key lives in a separate jev-<kind>.key file. */
-export const JevConfig = z.object({
-  schemaVersion: z.literal(1),
-  enabled: z.boolean(),
-  capabilities: z.object({ routing: z.boolean().default(false) }).catchall(z.boolean()),
-  provider: JevProvider,
-}).strict();
-/** Wire view of the Jev setup — hasKey only; the key material never leaves
- *  the daemon home. `sha256` is the raw jev.json byte hash — the optimistic-
- *  concurrency token set-jev requires so a stale save cannot silently
- *  overwrite another client's capability keys (supervision-integration.md
- *  §Configuration); null means the file is absent, and it stays present on a
- *  broken file so the CAS overwrite path still works. */
-export const JevView = z.object({
-  configured: z.boolean(),
-  enabled: z.boolean().nullable(),
-  capabilities: z.record(z.string(), z.boolean()).nullable(),
-  provider: JevProvider.nullable(),
-  hasKey: z.boolean(),
-  keyPermissionsOk: z.boolean().nullable(),
-  sha256: Sha.nullable(),
-  error: z.string().nullable(),
-}).strict();
-export const GetJevInput = z.object({
-  schemaVersion: z.literal(1),
-  target: Target,
-}).strict();
-export const GetJevOutput = z.object({
-  schemaVersion: z.literal(1),
-  jev: JevView,
-}).strict();
-/** Plugin-owned state mutation, same class as set-role-routing: writes
- *  slp-runtime/state/jev.json atomically (0600). Toggling off never removes
- *  the stored key. `expectedSha256` is the sha256 get-jev returned (null =
- *  expect the file to be absent); a mismatch is an IDEMPOTENCY_CONFLICT and
- *  the client must reload first — this is what keeps one card's routing edit
- *  from overwriting another's supervision toggle. */
-export const SetJevInput = z.object({
-  schemaVersion: z.literal(1),
-  target: Target,
-  jev: JevConfig,
-  expectedSha256: Sha.nullable(),
-}).strict();
-export const SetJevOutput = z.object({
-  schemaVersion: z.literal(1),
-  jev: JevView,
-}).strict();
-/** Key lifecycle: `key` writes jev-openrouter.key (0600, atomic); `null`
- *  removes it. The key value itself is never echoed back or journaled. */
-export const SetJevKeyInput = z.object({
-  schemaVersion: z.literal(1),
-  target: Target,
-  key: z.string().min(1).max(512).nullable(),
-}).strict();
-export const SetJevKeyOutput = z.object({
-  schemaVersion: z.literal(1),
-  hasKey: z.boolean(),
-}).strict();
-/** Live key probe: GET {baseUrl}/api/v1/auth/key with the stored key. This is
- *  the only Jev RPC that touches the network — an explicit human action, not
- *  a poll. */
-export const TestJevInput = z.object({
-  schemaVersion: z.literal(1),
-  target: Target,
-}).strict();
-export const TestJevOutput = z.object({
-  schemaVersion: z.literal(1),
-  ok: z.boolean(),
-  detail: z.string().max(512).nullable(),
-  latencyMs: z.number().nonnegative(),
-}).strict();
 export const LocalTargetInput = z.object({
   schemaVersion: z.literal(1),
 }).strict();
@@ -588,10 +478,7 @@ export const getRoleRouting = defineRpc({ name: "get-role-routing", input: GetRo
 export const setRoleRouting = defineRpc({ name: "set-role-routing", input: SetRoleRoutingInput, output: SetRoleRoutingOutput });
 export const getPeerPool = defineRpc({ name: "get-peer-pool", input: GetPeerPoolInput, output: GetPeerPoolOutput });
 export const setPeerPool = defineRpc({ name: "set-peer-pool", input: SetPeerPoolInput, output: SetPeerPoolOutput });
-export const getJev = defineRpc({ name: "get-jev", input: GetJevInput, output: GetJevOutput });
-export const setJev = defineRpc({ name: "set-jev", input: SetJevInput, output: SetJevOutput });
-export const setJevKey = defineRpc({ name: "set-jev-key", input: SetJevKeyInput, output: SetJevKeyOutput });
-export const testJev = defineRpc({ name: "test-jev", input: TestJevInput, output: TestJevOutput });
+
 
 // ---------------------------------------------------------------------------
 // Receipt / operation-intent journal schemas (server-internal; the client
@@ -772,7 +659,10 @@ export const Intent = z.object({
 }).strict();
 export const Receipt = z.object({
   schemaVersion: z.literal(1),
-  pluginId: z.literal("paseo-slp"),
+  // "paseo-slp" is the id this plugin carried before it was renamed; a
+  // receipt written under it stays readable so an existing activation
+  // carries over a reinstall under the new id.
+  pluginId: z.enum(["slp-revibed", "paseo-slp"]),
   target: Target,
   stableRoot: AbsolutePath,
   revision: z.number().int().nonnegative(),
@@ -827,17 +717,6 @@ export type GetPeerPoolRequest = z.infer<typeof GetPeerPoolInput>;
 export type GetPeerPoolResult = z.infer<typeof GetPeerPoolOutput>;
 export type SetPeerPoolRequest = z.infer<typeof SetPeerPoolInput>;
 export type SetPeerPoolResult = z.infer<typeof SetPeerPoolOutput>;
-export type JevProviderValue = z.infer<typeof JevProvider>;
-export type JevConfigValue = z.infer<typeof JevConfig>;
-export type JevViewValue = z.infer<typeof JevView>;
-export type GetJevRequest = z.infer<typeof GetJevInput>;
-export type GetJevResult = z.infer<typeof GetJevOutput>;
-export type SetJevRequest = z.infer<typeof SetJevInput>;
-export type SetJevResult = z.infer<typeof SetJevOutput>;
-export type SetJevKeyRequest = z.infer<typeof SetJevKeyInput>;
-export type SetJevKeyResult = z.infer<typeof SetJevKeyOutput>;
-export type TestJevRequest = z.infer<typeof TestJevInput>;
-export type TestJevResult = z.infer<typeof TestJevOutput>;
 export type StartResult = z.infer<typeof StartOutput>;
 export type StatusResult = z.infer<typeof StatusOutput>;
 export type BindingViewValue = z.infer<typeof BindingView>;

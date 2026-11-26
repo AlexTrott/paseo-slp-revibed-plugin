@@ -1,13 +1,13 @@
 // Daemon-home verification (§8.1) — one implementation shared by the
-// manager and the jev module: canonical realpath, a real directory, a
+// manager and the state store: canonical realpath, a real directory, a
 // readable regular config.json, and a real slp-runtime directory (a
 // symlinked stableRoot would redirect credential writes outside the
 // canonical home). Every failure is a HOME_UNVERIFIED OperationConflict.
 //
 // The two callers keep their distinct message for a non-regular
-// config.json — the manager names the link case, jev keeps its generic
-// wording — passed as `notRegularConfigMessage`. The returned `configPath`
-// is carried by the manager's HomeContext; the jev module ignores it.
+// config.json — the manager names the link case, the state store keeps its
+// own wording — passed as `notRegularConfigMessage`. The returned `configPath`
+// is carried by the manager's HomeContext; the state store ignores it.
 import { lstatSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";

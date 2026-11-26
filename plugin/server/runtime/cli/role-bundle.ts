@@ -168,7 +168,7 @@ export function roleDelivery(root: string, role: string, env: Environment = proc
     : cli;
   const recovery = `Installed policy directory: ${policyDir}\nPolicy recovery command: ${recoveryCli} instructions ${role}\n`;
   const entryPrefix = core +
-    (orchestrates(role) ? `For repo setup/update, use ${join(policyRoot, 'skills/paseo-slp-onboarding/SKILL.md')}.\n` : '') +
+    (orchestrates(role) ? `For repo setup/update, use ${join(policyRoot, 'skills/slp-revibed-onboarding/SKILL.md')}.\n` : '') +
     recovery + `Snapshot command: ${cli} snapshot <repository>\n` +
     (managed ? managedHelpers(cli, managed.daemonHome, role) : '');
   // Compute the measured carrier once, alongside the immutable core. launch.ts

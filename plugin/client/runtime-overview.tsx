@@ -1,26 +1,7 @@
 import { Text, View } from "react-native";
-import type { JevViewValue, StatusResult } from "../shared/contracts.ts";
+import type { StatusResult } from "../shared/contracts.ts";
 import { Badge, Card, KV, styles } from "./ui-kit.tsx";
 import type { Colors } from "./ui-kit.tsx";
-
-function jevSavedState(view: JevViewValue | null, readError: string | null): string {
-  if (readError) return "Read unavailable";
-  if (!view) return "Awaiting settings read";
-  if (view.error) return "Configuration error; open Routing / Jev";
-  if (!view.configured) return "Not configured";
-  return view.enabled === true ? "Enabled; inspect capabilities"
-    : view.enabled === false ? "Disabled" : "State unavailable";
-}
-
-export function jevSummary(view: JevViewValue | null, readError: string | null,
-  editor: { dirty: boolean; saved: boolean } = { dirty: false, saved: false }): string {
-  const observed = jevSavedState(view, readError);
-  if (editor.dirty) return `Unsaved settings · Saved state: ${observed}`;
-  if (editor.saved && !readError && view?.configured && !view.error && typeof view.enabled === "boolean") {
-    return `Saved settings · ${observed}`;
-  }
-  return observed;
-}
 
 /** Binding identity is server data, never an acceptance or activation oracle. */
 export function RuntimeIdentity({ colors, statusView, home }: {

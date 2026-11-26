@@ -2,7 +2,7 @@
 
 Check desk binding first (slp_status if available); use bound slp_seat_create
 for Lead/Peer, including existing worktrees (references/delegation-execution.md).
-Peer default: omit runtime/selection for server pool/Jev choice;
+Peer default: omit runtime/selection for server pool choice;
 choices need selection.optionId; ambiguous V2 needs selection.thinkingOptionId.
 New worktree: Paseo create_workspace under host-setup authority, then
 slp_seat_create placement existing. create_agent remains compatibility/recovery.

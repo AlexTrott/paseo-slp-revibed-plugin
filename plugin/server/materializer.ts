@@ -1,4 +1,4 @@
-// Immutable candidate install-unit publication for the paseo-slp manager
+// Immutable candidate install-unit publication for the slp-revibed manager
 // plugin (spec §5). The embedded payload is server-bundled; no runtime fetch
 // or checkout read is permitted here. Publication is stage → verify → fsync →
 // rename; a verified existing directory is reused, a mismatch is

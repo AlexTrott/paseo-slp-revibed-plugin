@@ -286,7 +286,7 @@ function fakeSource(dir, marker) {
   const source = join(dir, `source-${marker}`);
   mkdirSync(join(source, 'bin'), { recursive: true });
   mkdirSync(join(source, 'src'), { recursive: true });
-  writeFileSync(join(source, 'package.json'), json({ name: 'paseo-slp', version: marker }));
+  writeFileSync(join(source, 'package.json'), json({ name: 'slp-revibed', version: marker }));
   writeFileSync(join(source, 'install.sh'), '#!/bin/sh\n');
   for (const name of ['codex-role.mjs', 'pi-role.mjs', 'devin-role.mjs', 'claude-role.mjs', 'opencode-role.mjs', 'grok-role.mjs', 'slp.mjs'])
     writeFileSync(join(source, 'bin', name), `// ${marker}\n`);
@@ -570,11 +570,11 @@ test('bare --paseo-home and SLP_HOME resolve the documented defaults', t => {
 });
 
 test('the default install dir follows the platform data convention', () => {
-  assert.equal(installHome('linux', {}, '/h'), '/h/.local/share/paseo-slp');
-  assert.equal(installHome('linux', { XDG_DATA_HOME: '/xdg' }, '/h'), '/xdg/paseo-slp');
-  assert.equal(installHome('darwin', {}, '/h'), '/h/Library/Application Support/paseo-slp');
-  assert.equal(installHome('win32', { LOCALAPPDATA: 'C:/LA' }, 'C:/u'), 'C:/LA/paseo-slp');
-  assert.equal(installHome('win32', {}, 'C:/u'), 'C:/u/AppData/Local/paseo-slp');
+  assert.equal(installHome('linux', {}, '/h'), '/h/.local/share/slp-revibed');
+  assert.equal(installHome('linux', { XDG_DATA_HOME: '/xdg' }, '/h'), '/xdg/slp-revibed');
+  assert.equal(installHome('darwin', {}, '/h'), '/h/Library/Application Support/slp-revibed');
+  assert.equal(installHome('win32', { LOCALAPPDATA: 'C:/LA' }, 'C:/u'), 'C:/LA/slp-revibed');
+  assert.equal(installHome('win32', {}, 'C:/u'), 'C:/u/AppData/Local/slp-revibed');
 });
 
 test('saved profiles default to the host\'s enabled provider family', t => {

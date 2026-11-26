@@ -17,8 +17,7 @@ empty. Host upgrade/init never imports choices automatically. Preserve
 legacy data; another repository/profile is no fallback.
 Human may enable one designated eligible quotaFallback, not an ordered search;
 missing/disabled supplies no fallback authority. Dispositions are independent
-of model choice. Jev configuration is separate Manager authority, outside
-pool setup; provider-routing.md owns its conditional branch.
+of model choice.
 
 Validate intended direct launches with installed prepare --check using live
 providers and option/hash; inspect exact emitted bundle. Managed dispatch
@@ -29,7 +28,7 @@ not create agents, authenticate grants or establish live E2E acceptance.
 
 For a new pool, Manager offers five parked starter presets: Fast, Balanced,
 Advanced, Frontier and Cross-provider. Human chooses models, edits English
-starter descriptions or adds arbitrary presets. Effort can be Lead/Jev-selected
+starter descriptions or adds arbitrary presets. Effort can be Lead-selected
 within supported values or Human-fixed. Cross-provider has an explicit rule
 relative to a named reference seat's runtime provider (for example Devin to Codex);
 no model-vendor declarations are needed. Existing v1 pools stay unchanged. Preview and review a v2

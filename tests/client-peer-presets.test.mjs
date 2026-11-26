@@ -19,7 +19,7 @@ async function setup(t,initial=null,catalogs={}) {
   const pool=mod.usePeerPoolCard({target,targetKey:mod.targetKey(target),isCurrentKey:()=>true,
    callGetPeerPool:read.rpc,callSetPeerPool:write.rpc,catalogs,featureSets:{},featuresLoadingFor:null,scrollFocusNode:()=>{},update:()=>{}});
   state.pool=pool;
-  return React.createElement(mod.PeerPoolCard,{colors,target,compact:false,statusView:null,jev:{view:null},pool,
+  return React.createElement(mod.PeerPoolCard,{colors,target,compact:false,statusView:null,pool,
    availableFamilies:['codex'],catalogs,catalogLoadingFor:null,retryCatalog:async()=>{},retryFeatureSet:async()=>{},scrollFocusNode:()=>{}});
  }
  let renderer;await act(async()=>{renderer=TestRenderer.create(React.createElement(Harness,{home:'/a'}));});

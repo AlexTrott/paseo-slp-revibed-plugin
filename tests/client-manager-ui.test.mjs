@@ -21,28 +21,6 @@ async function render(t, Component, props) {
   return renderer;
 }
 
-test('Jev overview keeps an unavailable read, unknown state and invalid config distinct from a disabled capability', async t => {
-  const { jevSummary } = await loadHooks(t);
-  const view = { configured: true, enabled: false, error: null };
-  assert.equal(jevSummary(view, null), 'Disabled');
-  assert.equal(jevSummary({ ...view, enabled: null }, null), 'State unavailable');
-  assert.equal(jevSummary({ ...view, configured: false }, null), 'Not configured');
-  assert.equal(jevSummary({ ...view, error: 'invalid configuration' }, null), 'Configuration error; open Routing / Jev');
-  assert.equal(jevSummary(view, 'read failed'), 'Read unavailable');
-  assert.equal(jevSummary(null, null), 'Awaiting settings read');
-  const draft = { dirty: true, saved: false }, saved = { dirty: false, saved: true };
-  assert.equal(jevSummary(view, null, draft), 'Unsaved settings · Saved state: Disabled');
-  assert.equal(jevSummary(view, null, saved), 'Saved settings · Disabled');
-  for (const editor of [draft, saved]) {
-    const prefix = editor.dirty ? 'Unsaved settings · Saved state: ' : '';
-    assert.equal(jevSummary(view, 'read failed', editor), `${prefix}Read unavailable`);
-    assert.equal(jevSummary(null, null, editor), `${prefix}Awaiting settings read`);
-    assert.equal(jevSummary({ ...view, enabled: null }, null, editor), `${prefix}State unavailable`);
-    assert.equal(jevSummary({ ...view, configured: false }, null, editor), `${prefix}Not configured`);
-    assert.equal(jevSummary({ ...view, error: 'invalid configuration' }, null, editor), `${prefix}Configuration error; open Routing / Jev`);
-  }
-});
-
 test('slim option controls retain selection, touch slop and themed focus without forced pill height', async t => {
   const mod = await loadHooks(t), selected = [];
   mod.primitiveState.tree = true;
@@ -151,8 +129,6 @@ test('Manager starts at Overview, exposes conflicts, keeps drafts across section
       case 'status': return runtime({ conflicts: [{ code: 'CONFIG_DRIFT', message: 'fixture conflict', path: '/config' }] });
       case 'get-role-routing': return { routing: { schemaVersion: 1, supervisor: { family: 'codex', model: 'saved-model' }, lead: { family: 'codex' } } };
       case 'get-peer-pool': return { pool: null, sha256: null, error: null, legacy: null, legacyError: null };
-      case 'get-jev': return { jev: { configured: false, enabled: false, capabilities: { routing: false, supervision: false }, provider: null, sha256: null, error: null } };
-      case 'get-supervision': return { schemaVersion: 2, config: null, sha256: null, migration: null, observations: [], gates: {}, diagnostics: { droppedEvents: 0, reasons: [] }, unverified: [], error: null };
       case 'catalog': return { models: [], modes: [], features: [], error: 'fixture catalog unavailable' };
       default: throw new Error(`Unexpected RPC ${contract.name}`);
     }
@@ -165,7 +141,7 @@ test('Manager starts at Overview, exposes conflicts, keeps drafts across section
   await act(async () => tab('Profiles').props.onPress());
   const card = renderer.root.findByType(mod.ManagerSurface).findAll(node => node.type.name === 'RoutingCard')[0];
   await act(async () => card.props.routing.setField('supervisor', 'model')('unsaved-model'));
-  await act(async () => tab('Supervision').props.onPress());
+  await act(async () => tab('Language').props.onPress());
   await act(async () => tab('Profiles').props.onPress());
   assert.equal(card.props.routing.form.supervisor.model, 'unsaved-model');
   assert.match(JSON.stringify(renderer.toJSON()), /Save profiles/);
@@ -182,8 +158,6 @@ async function managerRig(t, extra = {}, adapters = {}, tree = false) {
     if (contract.name === 'status') return reads.rpc(input);
     if (contract.name === 'get-role-routing') return Promise.resolve({ routing: null });
     if (contract.name === 'get-peer-pool') return Promise.resolve({ pool: null, sha256: null, error: null, legacy: null, legacyError: null });
-    if (contract.name === 'get-jev') return Promise.resolve({ jev: null });
-    if (contract.name === 'get-supervision') return Promise.resolve({ config: null, observations: [], unverified: [], diagnostics: { droppedEvents: 0, reasons: [] } });
     if (contract.name === 'catalog') return Promise.resolve({ models: [], modes: [], features: [], error: null });
     throw new Error(`Unapproved fixture call ${contract.name}`);
   } };
@@ -357,7 +331,7 @@ test('normal sections stay free of runtime setup and never save or bind on navig
   const rig = await managerRig(t, {}, {}, true);
   await act(async () => rig.reads.calls[0].resolve(runtime()));
   const setup = () => rig.renderer.root.findAll(node => node.props.title === 'Runtime setup')[0];
-  for (const section of ['overview', 'profiles', 'pool', 'language', 'jev', 'supervision']) {
+  for (const section of ['overview', 'profiles', 'pool', 'language']) {
     await act(async () => rig.renderer.root.findByType('SettingsSelect').props.onValueChange(section));
     assert.equal(visible(setup()), false);
     assert.equal(modal(rig), undefined);
@@ -419,54 +393,18 @@ test('accepted pending activation keeps its ID through uncertain polls and rejec
   assert.equal(button().props.disabled, false, 'only the tracked terminal result releases the guard');
 });
 
-test('Jev Overview distinguishes retained draft from saved state until explicit Apply succeeds', async t => {
-  const savedView = { configured: true, enabled: false, capabilities: { routing: false, supervision: false },
-    provider: { kind: 'openrouter', model: 'typesafe/jev-1.13', baseUrl: 'https://openrouter.ai' },
-    hasKey: false, keyPermissionsOk: null, sha256: A, error: null };
-  const writes = deferredRpc();
-  const rig = await managerRig(t, {}, {
-    'get-jev': async () => ({ jev: savedView }),
-    'set-jev': input => writes.rpc(input),
-  });
-  await act(async () => rig.reads.calls[0].resolve(runtime()));
-  const select = section => act(async () => rig.renderer.root.findByType('SettingsSelect').props.onValueChange(section));
-  const card = () => rig.renderer.root.findAll(node => node.type.name === 'JevCard')[0];
-  const summary = () => rig.renderer.root.findAll(node => node.props.label === 'Jev' && typeof node.props.value === 'string')[0].props.value;
-  assert.equal(summary(), 'Disabled');
-  await select('jev');
-  await act(async () => card().findAll(node => node.props.title === 'Enable Jev' && typeof node.props.onToggle === 'function')[0].props.onToggle(true));
-  await select('overview');
-  assert.equal(summary(), 'Unsaved settings · Saved state: Disabled');
-  assert.equal(card().props.jev.enabledOn, true);
-  assert.equal(card().props.jev.view.enabled, false);
-  assert.equal(rig.calls.filter(call => /^(set-|activate|reconcile|deactivate|test-)/.test(call.name)).length, 0);
-  await select('jev');
-  assert.equal(card().props.jev.enabledOn, true);
-  await act(async () => card().findAll(node => node.props.label === 'Apply Jev settings' && typeof node.props.onPress === 'function')[0].props.onPress());
-  assert.equal(writes.calls.length, 1);
-  assert.equal(writes.calls[0].input.expectedSha256, A);
-  assert.equal(writes.calls[0].input.jev.enabled, true);
-  await select('overview');
-  assert.equal(summary(), 'Unsaved settings · Saved state: Disabled', 'pending save does not claim success');
-  await act(async () => writes.calls[0].resolve({ jev: { ...savedView, enabled: true, sha256: B } }));
-  assert.equal(summary(), 'Saved settings · Enabled; inspect capabilities');
-  assert.equal(card().props.jev.dirty, false);
-  assert.equal(card().props.jev.saved, true);
-  assert.equal(rig.calls.filter(call => /^(set-|activate|reconcile|deactivate|test-)/.test(call.name)).length, 1);
-});
-
 test('screen params follow direct links, back and reload; compact selector writes only normalized section params and retains draft', async t => {
   const opened = [];
-  const rig = await managerRig(t, { params: { section: 'supervision' }, onSectionChange: section => opened.push(section) });
+  const rig = await managerRig(t, { params: { section: 'language' }, onSectionChange: section => opened.push(section) });
   await act(async () => rig.reads.calls[0].resolve(runtime()));
   const selector = () => rig.renderer.root.findByType('SettingsSelect');
-  assert.equal(selector().props.value, 'supervision');
+  assert.equal(selector().props.value, 'language');
   await act(async () => rig.routing().setField('supervisor', 'model')('local-draft'));
   await act(async () => selector().props.onValueChange('profiles'));
   assert.deepEqual(opened, ['profiles']);
   await rig.update({ params: { section: 'profiles' } });
   assert.equal(selector().props.value, 'profiles');
-  await rig.update({ params: { section: 'supervision' } });
+  await rig.update({ params: { section: 'language' } });
   assert.equal(rig.routing().form.supervisor.model, 'local-draft');
   await rig.update({ params: { section: 'unknown', daemonHome: '/never-forwarded', authority: 'never-forwarded' } });
   assert.equal(selector().props.value, 'overview');
@@ -523,8 +461,7 @@ test('all manager sections and binding retain completed reads on reopen while fr
     'local-target': { daemonHome: '/a' }, status: runtime({ embeddedCandidateSha256: A, communicationLanguage: 'Vietnamese' }),
     'get-role-routing': { routing: { schemaVersion: 1, supervisor: { family: 'codex', model: 'fixture-model', modeId: 'full-access', thinkingOptionId: 'high' }, lead: { family: 'codex', model: 'fixture-model' } } },
     'get-peer-pool': { pool: { version: 1, policy: 'Remember this pool', options: [], quotaFallback: { enabled: false, optionId: null } }, sha256: A, error: null, legacy: null, legacyError: null },
-    'get-jev': { jev: { configured: true, enabled: true, capabilities: { routing: false, supervision: false }, provider: { kind: 'openrouter', model: 'saved-model', baseUrl: 'https://example.invalid' }, sha256: A, error: null } },
-    'get-supervision': { schemaVersion: 2, config: null, sha256: A, observations: [], gates: {}, unverified: [], migration: null, diagnostics: { droppedEvents: 0, reasons: [] }, error: null }, catalog: metadata,
+    catalog: metadata,
   };
   mod.paseoState.current = { agents: { list: async () => ({ entries: [] }) }, rpc: (contract, input) => {
     if (!(contract.name in reads)) { mutations.push(contract.name); throw Error('Unexpected mutation'); }
@@ -542,10 +479,6 @@ test('all manager sections and binding retain completed reads on reopen while fr
   assert.equal(card('RoutingCard').props.routing.fresh, false);
   assert.equal(card('PeerPoolCard').props.pool.poolForm.policy, 'Remember this pool');
   assert.equal(card('PeerPoolCard').props.pool.poolLocked, true);
-  assert.equal(card('JevCard').props.jev.model, 'saved-model');
-  assert.equal(card('JevCard').props.jev.fresh, false);
-  assert.equal(card('SupervisionCard').props.supervision.data.sha256, A);
-  assert.equal(card('SupervisionCard').props.supervision.fresh, false);
   assert.ok(renderer.root.findAll(node => node.type.name === 'LanguageCard')[0].props.disabled);
   const fields = card('RoutingCard').findAll(node => node.type.name === 'Field' && ['Mode', 'Feature values (JSON)', 'Thinking option'].includes(node.props.label));
   assert.equal(fields.length, 0, 'cached option controls remain; no transient raw editors');
@@ -560,7 +493,7 @@ test('all manager sections and binding retain completed reads on reopen while fr
 
   await act(async () => card('RoutingCard').props.onSave());
   assert.deepEqual(mutations, []);
-  for (const section of ['overview', 'pool', 'jev', 'supervision', 'language', 'maintenance']) {
+  for (const section of ['overview', 'pool', 'language', 'maintenance']) {
     await act(async () => renderer.update(React.createElement(mod.ManagerSurface, { ...props, params: { section } })));
     assert.ok(JSON.stringify(renderer.toJSON()).includes(A));
   }

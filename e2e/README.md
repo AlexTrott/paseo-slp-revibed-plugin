@@ -1,7 +1,7 @@
 # Single-session E2E
 
 In a session opened on this source checkout, ask **“chạy E2E toàn bộ package”**.
-AGENTS.md routes the agent to `skills/paseo-slp-e2e/SKILL.md`. The coordinating
+AGENTS.md routes the agent to `skills/slp-revibed-e2e/SKILL.md`. The coordinating
 session executes the requested rows in `scenarios.mjs` using real Paseo actors and
 returns one report. Say “chạy dogfood basic-codex” for just the basic Codex chain;
 other rows remain NOT_RUN by scope. This entrypoint is for package development; it requires the source
@@ -110,7 +110,7 @@ path and `<installed>` verified against the pinned host candidate:
 
 ```text
 node <installed>/bin/slp.mjs init <fixtureRoot> --apply
-Read and apply <installed>/skills/paseo-slp-onboarding/SKILL.md:
+Read and apply <installed>/skills/slp-revibed-onboarding/SKILL.md:
   fill the fixture protocol from the task authority/topology/proof/budget;
   verify Supervisor/Lead profiles and discover the Peer runtimes.
   populate the project pool with authorized options and suitability descriptions.

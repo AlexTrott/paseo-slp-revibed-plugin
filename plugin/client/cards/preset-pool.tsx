@@ -44,7 +44,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
   const migration = pool.poolData?.pool?.version === 1;
   const edit = <K extends keyof PeerSeatForm>(index: number, key: K, value: PeerSeatForm[K]) => pool.updatePool(form => ({ ...form,
     seats: form.seats.map((seat, i) => i === index ? { ...seat, [key]: value } : seat) }));
-  return <Card colors={colors} title="Peer pool" subtitle="Five starter presets, or add your own. You configure models; Lead / Jev chooses a preset and supported effort for the assignment."
+  return <Card colors={colors} title="Peer pool" subtitle="Five starter presets, or add your own. You configure models; Lead chooses a preset and supported effort for the assignment."
     trailing={<Badge colors={colors} label={pool.poolDirty ? 'Unsaved changes' : pool.poolData?.pool ? 'Saved pool' : 'Unsaved starter presets'} tone={pool.poolDirty ? 'draft' : 'neutral'} />}>
     {pool.poolReadError || pool.poolData?.error ? <Text style={{ color: colors.statusWarning }}>{pool.poolReadError ?? pool.poolData?.error}</Text> : null}
     {pool.poolData !== null && !pool.fresh ? <Text style={{ color: colors.foregroundMuted }}>Refreshing pool; previous data is read-only.</Text> : null}
@@ -71,7 +71,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
       return <Collapse key={seat.uid} colors={colors} title={seat.displayName || 'Unnamed preset'}
         subtitle={seat.enabled ? `${seat.family || 'No provider'} / ${seat.model || 'No model'}` : 'Disabled'} open={pool.openSeat === index} onToggle={toggle}>
         <Field colors={colors} label="Preset name" value={seat.displayName ?? ''} onChangeText={value => edit(index, 'displayName', value)} disabled={disabled} />
-        <Field colors={colors} label="When to use" hint="Lead / Jev reads your description. Edit in any language; the preset name is not a fixed routing class."
+        <Field colors={colors} label="When to use" hint="Lead reads your description. Edit in any language; the preset name is not a fixed routing class."
           value={seat.description ?? ''} onChangeText={value => edit(index, 'description', value)} disabled={disabled} multiline />
         <CheckRow colors={colors} title="Enabled" checked={seat.enabled} onToggle={pool.setSeatEnabled(index)} disabled={disabled} />
         <Text style={[styles.fieldLabel, { color: colors.foregroundMuted }]}>Provider</Text>
@@ -85,7 +85,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
           onChange={pool.setSeatField(index, 'model')} onOpen={() => { if (seat.family) void retryCatalog(seat.family, 'peer'); }} disabled={disabled} />
           : <Field colors={colors} label="Model" value={seat.model} onChangeText={pool.setSeatField(index, 'model')} disabled={disabled} />}
         <Text style={[styles.fieldLabel, { color: colors.foregroundMuted }]}>Thinking effort</Text>
-        <ChipSelect colors={colors} value={seat.effortKind ?? 'select'} options={[{ label: 'Lead / Jev chooses', value: 'select' }, { label: 'Fixed', value: 'fixed' }]}
+        <ChipSelect colors={colors} value={seat.effortKind ?? 'select'} options={[{ label: 'Lead chooses', value: 'select' }, { label: 'Fixed', value: 'fixed' }]}
           onChange={value => edit(index, 'effortKind', value)} disabled={disabled} />
         {seat.effortKind === 'fixed' ? thinking ? <ChipSelect colors={colors} value={seat.thinkingOptionId}
           options={[{ label: 'Provider default', value: '' }, ...thinking.options.map(e => ({ label: e.label, value: e.id })),
@@ -98,12 +98,12 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
             <Text style={[styles.fieldLabel, { color: colors.foregroundMuted }]}>Provider selection</Text>
             <ChipSelect colors={colors} value={seat.runtimeRule ?? 'none'} options={[{ label: 'No restriction', value: 'none' }, { label: 'Different provider from reference', value: 'different-model-provider' }]}
               onChange={value => edit(index, 'runtimeRule', value)} disabled={disabled} />
-            {seat.runtimeRule === 'different-model-provider' ? <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>For a second perspective: use a different provider from the agent being reviewed, such as Codex reviewing Devin. Lead / Jev names that reference agent.</Text> : null}
+            {seat.runtimeRule === 'different-model-provider' ? <Text style={[styles.mutedSmall, { color: colors.foregroundMuted }]}>For a second perspective: use a different provider from the agent being reviewed, such as Codex reviewing Devin. Lead names that reference agent.</Text> : null}
           </View>
           {seat.effortKind !== 'fixed' ? <View style={styles.field}>
             <Text style={[styles.fieldLabel, { color: colors.foregroundMuted }]}>Allowed efforts</Text>
             <CheckRow colors={colors} title="All supported efforts" checked={seat.allowedEfforts === undefined}
-              hint="Lead / Jev can choose any supported effort, including newly available choices."
+              hint="Lead can choose any supported effort, including newly available choices."
               onToggle={all => edit(index, 'allowedEfforts', all ? undefined : efforts.map(e => e.id))}
               disabled={disabled || (seat.allowedEfforts === undefined && efforts.length === 0)} />
             <View style={styles.chipRow}>
@@ -138,7 +138,7 @@ export function PresetPoolCard({ colors, pool, availableFamilies, catalogs, retr
           <View style={[styles.field, { paddingTop: 12, borderTopWidth: 1, borderColor: colors.border }]}>
           <Field colors={colors} label="Preset ID" hint="Identifies this preset. Renaming also updates its quota fallback reference."
             value={seat.id} onChangeText={pool.setSeatId(index)} disabled={disabled} />
-          <Field colors={colors} label="Selection hints" hint="Optional guidance sent to Lead / Jev. Observations about model behavior are advisory."
+          <Field colors={colors} label="Selection hints" hint="Optional guidance sent to Lead. Observations about model behavior are advisory."
             placeholder="e.g. Strong at spotting edge cases; may overengineer, so favor simpler approaches."
             value={seat.selectionHints ?? ''} onChangeText={value => edit(index, 'selectionHints', value)} disabled={disabled} multiline />
           <Field colors={colors} label="Private notes" hint="Local only; excluded from routing input." placeholder="e.g. Backup account; quota resets on Monday." value={seat.notes} onChangeText={pool.setSeatField(index, 'notes')} disabled={disabled} multiline />

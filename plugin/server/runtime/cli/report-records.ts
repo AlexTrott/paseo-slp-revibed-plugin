@@ -147,7 +147,7 @@ export function recordSchema() {
   };
   return {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    title: 'Paseo SLP report record v1',
+    title: 'SLP Revibed report record v1',
     oneOf: [
       {
         type: 'object', required: ['version', 'kind', 'seat', 'verdict', 'candidate', 'checks'],

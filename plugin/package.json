@@ -1,9 +1,9 @@
 {
-  "name": "paseo-slp",
+  "name": "slp-revibed",
   "private": true,
   "license": "MIT",
   "version": "0.0.0",
-  "description": "SLP runtime manager plugin for Paseo (Option A v1)",
+  "description": "SLP Revibed: Supervisor, Lead and Peer agent teams for Paseo",
   "dependencies": {
     "@getpaseo/protocol": "0.17.5",
     "zod": "4.6.7"

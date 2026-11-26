@@ -43,7 +43,7 @@ export class McpFiles {
         const directory = join(this.root, ".agents", "agents");
         await mkdir(directory, { recursive: true, mode: 0o700 });
         const metadata = {
-          name: this.name, description: "Paseo SLP session MCP transport", mainAgent: true, subagent: false,
+          name: this.name, description: "SLP Revibed session MCP transport", mainAgent: true, subagent: false,
           mcpServers: Object.entries(mcpMapping(config, this.namespace)).map(([logical, name]) => ({ name,
             command: process.execPath, args: ["--eval", MCP_CHILD, logical] })),
         };

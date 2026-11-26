@@ -427,11 +427,10 @@ export function requestSchema(handoff = false) {
       'catalog routing — required for peer': {
         'route.optionId': 'an option id from the routes output',
         'route.catalogSha256': 'the sha256 routes returned — stale or missing fails',
-        'route.thinkingOptionId': 'v2 only — selected supported effort, explicit null for runtime default, from route-choices or route-decide; v1 keeps its fixed option settings',
-        'route.selectionSha256': 'v2 only — capability/choice hash from route-choices or route-decide',
-        'route.routingContext': 'v2 only — exact reference/constraint context returned by discovery/decision',
+        'route.thinkingOptionId': 'v2 only — selected supported effort, explicit null for runtime default, from route-choices; v1 keeps its fixed option settings',
+        'route.selectionSha256': 'v2 only — capability/choice hash from route-choices',
+        'route.routingContext': 'v2 only — exact reference/constraint context returned by discovery',
         'route.disposition': 'peer only — the bounded specialism (engineer, architect, reviewer, scout, …)',
-        'route.decision': 'Jev receipt from `route-decide` — verified when supplied (shadow mode records jevChoice/declined in the plan), and REQUIRED + binding when the daemon arms jev.capabilities.routing (a bare optionId then fails)',
         providers: 'live list_providers array, each provider object verbatim — the option’s canonical slp-<family>-<role> wrapper must be observed',
       },
       'explicit binding — supervisor/lead': {
@@ -444,7 +443,6 @@ export function requestSchema(handoff = false) {
       'The plan emits the resolved modeId plus modeIdSource (binding | bundle | agent_mode | none) — a catalog option or saved profile pin reports bundle, an explicit binding reports binding, the .paseo-slp/workspace-protocol.md agent_mode frontmatter is the declared fallback, and none means pin the mode in the Human-owned option/profile or ask the Human (cross-family inheritance fails at the host; a permission mode never expands task authority).',
       'prepare --check <request.json> reports each stage failure and advisory warnings; prepare <request.json> --emit create prints the audit artifact { modeId, modeIdSource, warnings?, create } — create is the verbatim create_agent argument record and warnings are retained when present.',
       'Peer launches only through the project pool option: an explicit binding is refused, and profiles may accompany the request for discovery but never select the runtime.',
-      'Jev routing mode is per-daemon and evaluated at plan time for both prepare and prepare-handoff (they share the plan builder): a route.decision receipt is always verified, is required whenever jev.capabilities.routing is armed, and only then binds route.optionId to the receipt choice — an enabled-but-unarmed daemon verifies and records both picks (shadow evaluation). prepare never calls the network — receipts are produced only by the explicit route-decide helper command.',
     ],
     examples: {
       supervisor: {

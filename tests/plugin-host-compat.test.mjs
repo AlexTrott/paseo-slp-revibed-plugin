@@ -10,6 +10,7 @@ import {
   profilesArray, profilesForPatch, profilesHashOf, unrelatedPersistedView,
 } from '../plugin/server/config-view.ts';
 import { classifyState } from '../plugin/server/config-transaction.ts';
+import { Receipt } from '../plugin/shared/contracts.ts';
 import { OWNED_PROVIDER_IDS } from '../plugin/shared/runtime/families.ts';
 import { lifecycleHooks } from '../plugin/server/lifecycle-hooks.ts';
 import { createRoleInjection } from '../plugin/server/role-injection.ts';
@@ -216,4 +217,10 @@ test('a plan recorded in the legacy profile shape classifies as reached on a 0.1
   assert.notEqual(classifyState(disk([...stored, foreign]), served([...wire, foreign]), plan).class, 'after',
     'the recorded hash still binds every unrelated entry');
   assert.notEqual(classifyState(disk([stored[1], stored[0]]), served([wire[1], wire[0]]), plan).class, 'after', 'and the order');
+});
+
+test('a receipt written under the former plugin id still reads; an unknown id does not', () => {
+  assert.equal(Receipt.shape.pluginId.parse('slp-revibed'), 'slp-revibed');
+  assert.equal(Receipt.shape.pluginId.parse('paseo-slp'), 'paseo-slp');
+  assert.equal(Receipt.shape.pluginId.safeParse('another-plugin').success, false);
 });

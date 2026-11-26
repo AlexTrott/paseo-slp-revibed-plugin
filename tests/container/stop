@@ -3,7 +3,7 @@
 # container that lacks this harness's ownership label.
 set -euo pipefail
 
-name=paseo-slp-container-serve
+name=slp-revibed-container-serve
 if ! docker ps -a --format '{{.Names}}' --filter "name=^${name}$" | grep -q .; then
   echo "no serve container named ${name}"
   exit 0

@@ -392,21 +392,6 @@ test('wire optional Peer runtime discovers choices without intent then pins one 
  const replay=await callTool(f,104,'slp_seat_create',{...request,selection:{optionId:'second'}});
  assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.effects.creates.length,1);
 });
-test('wire armed Peer decision error never falls back and exact replay performs no network',async t=>{
- const f=await boundFormationSeat(t,{providerEntries:peerEntries});peerPool(f,1);
- writeFileSync(join(f.stableRoot,'state/jev.json'),JSON.stringify({schemaVersion:1,enabled:true,capabilities:{routing:true},
-  provider:{kind:'openrouter',model:'typesafe/jev-1.13'}}));
- writeFileSync(join(f.stableRoot,'state/jev-openrouter.key'),'fixture-key\n',{mode:0o600});
- const original=globalThis.fetch;let fetched=0;globalThis.fetch=async()=>{fetched++;throw new TypeError('fixture network failure');};
- t.after(()=>{globalThis.fetch=original;});
- const request={...seatCreate('armed-error'),role:'peer'};
- const out=await callTool(f,201,'slp_seat_create',request);
- assert.equal(out.state,'recorded');assert.equal(out.result.ok,false);
- assert.equal(out.phases[0].name,'route-issued');assert.equal(f.effects.creates.length,0);assert.ok(fetched>=1);
- const count=fetched;const replay=await callTool(f,202,'slp_seat_create',request);
- assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(fetched,count);
-});
-
 test('wire existing worktree pins native workspace/cwd and parent before delivery',async t=>{
  const f=await boundFormationSeat(t);
  execFileSync('git',['-C',f.repo.dir,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid',

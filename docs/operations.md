@@ -1,6 +1,6 @@
 # Operations
 
-Day-to-day reference for running Paseo SLP: activation, upgrades, removal,
+Day-to-day reference for running SLP Revibed: activation, upgrades, removal,
 profiles, repository setup, the Peer pool and the optional capabilities.
 The [README](../README.md) is the short tour; command details live in
 [cli.md](cli.md).
@@ -29,24 +29,24 @@ work:
 
 ```bash
 # From the repo — the plugin lives in the repo's plugin/ subdirectory:
-paseo plugin install duongvm57/paseo-slp-plugin:plugin
+paseo plugin install AlexTrott/paseo-slp-plugin:plugin
 
 # Pin to a specific release:
-paseo plugin install duongvm57/paseo-slp-plugin:plugin --ref v0.2.0
+paseo plugin install AlexTrott/paseo-slp-plugin:plugin --ref v0.2.0
 
 # From a local checkout (development):
-paseo plugin install /absolute/path/to/paseo-slp/plugin
+paseo plugin install /absolute/path/to/checkout/plugin
 ```
 
-`duongvm57/paseo-slp-plugin` is GitHub shorthand; the source argument takes
+`AlexTrott/paseo-slp-plugin` is GitHub shorthand; the source argument takes
 anything `git clone` accepts, including a full HTTPS/SSH URL or
-`file:///absolute/path/to/paseo-slp` for a local clone. The `:plugin` suffix
+`file:///absolute/path/to/checkout` for a local clone. The `:plugin` suffix
 selects the subdirectory. Without `--ref` the plugin follows the default
 branch and `paseo plugin update` pulls newer commits; pass `--ref` with a tag
-from [Releases](https://github.com/duongvm57/paseo-slp-plugin/releases) to
+from [Releases](https://github.com/AlexTrott/paseo-slp-plugin/releases) to
 pin a specific version instead — tags and commits pin, branches move. The
 daemon checks out
-the ref into a managed directory under `$PASEO_HOME/plugins/paseo-slp/<id>/`
+the ref into a managed directory under `$PASEO_HOME/plugins/slp-revibed/<id>/`
 and runs the manifest's `build` step (`npm install` inside `plugin/`) before
 loading it. Verify with `paseo plugin ls` — the plugin should reach
 `running`.
@@ -136,8 +136,8 @@ when adoption occurred without the original receipt.
 
 ## SLP screen and work panel
 
-Overview is the default destination. Profiles, Peer pool, Routing / Jev,
-Supervision, Language and Maintenance have their own sections; compact clients
+Overview is the default destination. Profiles, Peer pool, Language and
+Maintenance have their own sections; compact clients
 use a section selector. Section links survive reload and back/forward. An
 unknown section opens Overview with a notice. Only section identifiers travel
 in the screen URL; target paths and authority acknowledgments stay in the form.
@@ -154,7 +154,7 @@ deactivation; the full canonical home and candidate stay visible before changes.
 
 The sidebar's **Quick view** reads runtime status when opened and on explicit
 refresh. Paseo owns its desktop popover or compact bottom sheet. It does not
-aggregate workspace work. The supervision bell opens **Supervision** directly.
+aggregate workspace work.
 
 The workspace **SLP work** panel shows registered objectives, recorded owners,
 full-ledger queue counts and bounded record pages. **Open owner chat** uses the
@@ -234,13 +234,13 @@ How an update reaches the daemon depends on how the plugin was installed —
 `paseo plugin ls` shows the source kind per plugin.
 
 **Git source following the default branch** — installed as
-`paseo plugin install duongvm57/paseo-slp-plugin:plugin` without `--ref` —
+`paseo plugin install AlexTrott/paseo-slp-plugin:plugin` without `--ref` —
 updates through Paseo:
 
 ```bash
-paseo plugin update paseo-slp          # review and apply
-paseo plugin update paseo-slp --check  # show available updates without installing
-paseo plugin update paseo-slp --yes    # apply without asking
+paseo plugin update slp-revibed          # review and apply
+paseo plugin update slp-revibed --check  # show available updates without installing
+paseo plugin update slp-revibed --yes    # apply without asking
 ```
 
 The daemon fetches the source, builds the checkout and reloads the plugin.
@@ -250,7 +250,7 @@ that tag or commit; a plain `update` has nothing newer to offer because the
 pin does not move. Pick the new ref explicitly:
 
 ```bash
-paseo plugin update paseo-slp --ref v0.3.0
+paseo plugin update slp-revibed --ref v0.3.0
 ```
 
 **Directory install** — `paseo plugin install /absolute/path/to/plugin` —
@@ -259,7 +259,7 @@ checkout itself changes (pull, merge, your own edits); rebuild and reload to
 run it:
 
 ```bash
-paseo plugin reload paseo-slp
+paseo plugin reload slp-revibed
 ```
 
 Reactivating rebinds the current candidate and rebuilds its launchers. Running
@@ -311,7 +311,7 @@ After deactivation (or for a fresh install that never activated), remove the
 plugin registration with:
 
 ```bash
-paseo plugin remove paseo-slp
+paseo plugin remove slp-revibed
 ```
 
 `remove` deletes the plugin configuration only — it never touches
@@ -322,10 +322,10 @@ paseo plugin remove paseo-slp
 The onboarding skill teaches your agent how to set up this pack for a repo.
 
 ```bash
-npx skills add duongvm57/paseo-slp-plugin --skill paseo-slp-onboarding
+npx skills add AlexTrott/paseo-slp-plugin --skill slp-revibed-onboarding
 ```
 
-- `paseo-slp-onboarding` — inspects the repo and recommends a protocol
+- `slp-revibed-onboarding` — inspects the repo and recommends a protocol
   with assignment, execution and delivery settings. External connectors and pull
   automation belong to the repo harness. Product work, tracker
   tasks and controlled data changes share that protocol; Lead chooses workflows
@@ -335,14 +335,14 @@ npx skills add duongvm57/paseo-slp-plugin --skill paseo-slp-onboarding
   gets a deeper interview. Once installed it auto-triggers when you ask an
   agent to onboard/set up SLP.
 
-(`paseo-slp-e2e` is not installed — it runs from a source checkout; see
+(`slp-revibed-e2e` is not installed — it runs from a source checkout; see
 [E2E](development.md#e2e).)
 
 No skills installed? Paste this into any agent:
 
 ```text
-Help me understand and set up Paseo SLP. Read
-https://raw.githubusercontent.com/duongvm57/paseo-slp-plugin/main/docs/agent-guide.md
+Help me understand and set up SLP Revibed. Read
+https://raw.githubusercontent.com/AlexTrott/paseo-slp-plugin/main/docs/agent-guide.md
 first, then walk me through it step by step.
 ```
 
@@ -362,7 +362,7 @@ To set per-role model and reasoning:
    the screen or reloading the plugin.
 4. When creating a session directly, pick the saved profile in the model
    picker. For Peers, use onboarding to set up the repo pool, then ordinary
-   `slp_seat_create` resolves the pool/Jev route without runtime overrides.
+   `slp_seat_create` resolves the pool route without runtime overrides.
    The Lead supplies an independent choice when the operation requests one.
 
 **Thinking** is reasoning effort; **Mode** is the permission/approval level —
@@ -412,22 +412,22 @@ A repository catalog is a deliberate pin, created only by
 
 The onboarding skill is installed separately so agents can auto-trigger it.
 From a repo you want to use, install it project-locally (creates
-`.agents/skills/paseo-slp-onboarding`, committable with the repo):
+`.agents/skills/slp-revibed-onboarding`, committable with the repo):
 
 ```bash
 npx skills@latest add /absolute/path/to/paseo-slp \
-  --skill paseo-slp-onboarding --copy --yes
+  --skill slp-revibed-onboarding --copy --yes
 ```
 
 Or install it globally for all of the user's repos:
 
 ```bash
 npx skills@latest add /absolute/path/to/paseo-slp \
-  --skill paseo-slp-onboarding --global --copy --yes
+  --skill slp-revibed-onboarding --global --copy --yes
 ```
 
 Once the package is published to GitHub, replace the local path with the
-published URL/repository, e.g. `duongvm57/paseo-slp-plugin`. Use project
+published URL/repository, e.g. `AlexTrott/paseo-slp-plugin`. Use project
 mode or add `--global` as above; pass `--agent <name>` to target one agent instead of
 every detected one. Project skills land in `.agents/skills`, global skills
 in `~/.agents/skills`; Codex and Pi discover both scopes directly, and the
@@ -435,7 +435,7 @@ installer also links them into each agent's own skills directory (e.g.
 `.claude/skills`), so Claude picks them up the same way. Verify with
 `npx skills@latest list` or add `--global` for user scope. Open a fresh session after installing, then
 ask to onboard/set up SLP for the repo; the skill description triggers the
-workflow. See the [source skill](../skills/paseo-slp-onboarding/SKILL.md).
+workflow. See the [source skill](../skills/slp-revibed-onboarding/SKILL.md).
 
 Protocol and catalog are separate files: the protocol is operating guidance
 and the JSON is machine-checkable routing data. Do not embed JSON inside
@@ -514,9 +514,7 @@ discovery on the host.
 
 The bound Lead uses `slp_seat_create` for ordinary Peer formation (see below).
 For explicit CLI compatibility, the Lead reads the pool and validates option/hash
-via `prepare` before launching (when Jev routing is armed, the
-rationale trail is the receipt's recorded distribution instead — see
-[Jev-assisted routing](#jev-assisted-routing-optional)). With no valid pool/option at
+via `prepare` before launching. With no valid pool/option at
 either scope, finish onboarding first; there is no fallback to `slp-peer`, to
 the Lead's own settings, or to another repo's catalog.
 
@@ -525,36 +523,33 @@ the Lead's own settings, or to another repo's catalog.
 Call `slp_seat_create` with requestId, role=peer, taskLabel, assignment and
 its grantRef. Start with runtime and selection omitted. `selection: {optionId}`
 supplies an independent Lead choice when the operation returns choices.
-An explicit runtime is full-pin compatibility and must already carry its required
-pool/Jev receipts; it cannot accompany selection. No provider/settings override is
-accepted. The assignment's raw prose is the Jev routing brief.
+An explicit runtime is full-pin compatibility and must already carry its
+pool pins; it cannot accompany selection. No provider/settings override is
+accepted. A runtime pin that carries a routing `decision` is refused.
 
-| Jev mode | No runtime/selection | selection | Existing full runtime |
-|---|---|---|---|
-| unconfigured/off | Sole eligible option pins automatically; several return choices | Pin that eligible option | Existing offline pool/receipt validation |
-| shadow | Return choices even if sole | Retain independent choice plus server-obtained advisory receipt | Existing supplied-receipt semantics, no new call |
-| armed | Server obtains binding decision | Decision must match the choice | Existing required receipt validates offline, no new call |
-| unreadable/error | Refuse | Refuse | Refuse unreadable config as before |
+| Input | Result |
+|---|---|
+| No runtime/selection | A sole eligible option pins automatically; several return choices |
+| selection | Pin that eligible option |
+| Existing full runtime | Offline pool validation |
 
-`selection-required` has operationAdmitted=false: no intent, decision or child
+`selection-required` has operationAdmitted=false: no intent or child
 was admitted. It lists up to 32 bounded choices and omittedCount; use the same
 requestId with selection after choosing. Once intent is published, changing any
 input is IDEMPOTENCY_CONFLICT. Eligibility does not prove suitability, live quota
 or provider readiness; fresh connected provider validation still gates creation.
-There is no take-first or settings/provider fallback. Shadow errors block too.
+There is no take-first or settings/provider fallback.
 
-New selection records route-issued before a Jev request, then route-selected
-with complete receipt, option/hash/source and configuration fingerprint. Armed
-decline retains route-declined and refuses creation. Replans read the fixed pin
-and fail on drift; they never decide again. Exact replay reads old recorded or
-partial evidence before choice discovery, performs no decision/create/send and
-never resumes a crashed operation. Keep returned IDs and uncertainties. Old
+New selection records route-selected with option/hash/source. Replans read
+the fixed pin and fail on drift; they never select again. Exact replay reads
+old recorded or partial evidence before choice discovery, performs no
+create/send and never resumes a crashed operation. Keep returned IDs and uncertainties. Old
 full-runtime requests retain their original five-phase path and receipt bytes.
-Omitted-placement automatic formation uses at most seven phases of the existing
-16-phase cap (six with no network); explicit placement uses at most twelve. Oversized automatic input refuses in preflight before
-intent or Jev, using the same three-copy allowance and 32KiB reserve as the
+Omitted-placement automatic formation uses at most six phases of the existing
+16-phase cap; explicit placement uses at most eleven. Oversized automatic input refuses in preflight before
+intent, using the same three-copy allowance and 32KiB reserve as the
 final evidence check; shorten it and reuse the unconsumed requestId.
-Selection/plan evidence only known after decision is also checked before native
+Selection/plan evidence only known after selection is also checked before native
 allocation. Existing full-runtime validation and retained replay stay unchanged.
 
 For a refused or uncertain operation, consume its bounded cause/recovery and
@@ -700,7 +695,7 @@ no phase. Legacy omitted placement without inheritance qualifies caller
 cwd/repository and active workspace without adding phases or HEAD/config leases. SDK/Git observations are not an
 atomic fence against external writers; post-handoff native send remains separate.
 
-kind=worktree deliberately returns CAPABILITY_GAP before Jev or host/Git effects.
+kind=worktree deliberately returns CAPABILITY_GAP before selection or host/Git effects.
 New worktree: Lead uses Paseo create_workspace under the host-setup authority,
 then calls slp_seat_create with placement existing and a new requestId. The
 plugin never runs setup, installs dependencies or creates a worktree. SDK open
@@ -724,10 +719,10 @@ proof. Recorded receipts and exact replay stay unchanged after registration
 arrives. Only explicit placement adds membership-observed to the phase stream.
 
 Worst case: placement-planned + open-issued/open-returned + target-observed
-+ route-issued/selected + prepared + create-issued/returned/observed
-+ membership-observed + delivery-handed-off OR send-issued = 12/16 phases.
-ID/caller placement skips two open phases; full pin/Lead skips Jev selection
-phases; omitted full-runtime success retains 5 phases and exact old intent bytes.
++ route-selected + prepared + create-issued/returned/observed
++ membership-observed + delivery-handed-off OR send-issued = 11/16 phases.
+ID/caller placement skips two open phases; full pin/Lead skips the selection
+phase; omitted full-runtime success retains 5 phases and exact old intent bytes.
 No task enrollment, setup-suppression claim or archive/settlement proof is added.
 
 ### Peer quota fallback
@@ -748,144 +743,6 @@ quota. Do not switch models outside the pool via `update_agent`, do not use
 a provider default, and do not treat another model on the same account as
 fresh quota. When the designated option is not viable or quota fails again,
 report BLOCKED; keep ownership and evidence before handing off.
-
-### Jev-assisted routing (optional)
-
-Jev is a bounded decision primitive — TypeSafe's System One, served through
-either provider kind: `openrouter` (the OpenRouter Decisions API with the
-pinned model `typesafe/jev-1.13`) or `typesafe` (the first-party System One
-API at `https://api.typesafe.ai/v1/systemone` with the pinned model
-`jev-1.13.0`; `baseUrl` may point at a custom https endpoint/proxy carrying
-an origin+path prefix). It is
-**not** an ACP provider and never becomes an agent seat; it answers one typed
-choice question over a caller-supplied state and returns a calibrated answer.
-It runs through explicit `route-decide` or one admitted `slp_seat_create`
-executor — never in a background loop, a schedule, or inside `prepare`.
-
-Configuration is per daemon, via the SLP Manager's **Jev** card
-(`<daemonHome>/slp-runtime/state/jev.json` + a write-only `jev-<kind>.key`,
-0600 — `jev-openrouter.key` or `jev-typesafe.key` per the selected kind).
-All toggles default off, evaluated at preparation time — toggling
-never mutates running seats, and disabling keeps the stored key. Two modes:
-
-- **Shadow** (`enabled` on, `capabilities.routing` off): ordinary formation
-  requires an independent Lead choice and obtains the advisory receipt on the
-  server. CLI compatibility obtains it with `route-decide`; `prepare` verifies
-  the supplied receipt and records both picks (`routing.jev.jevChoice`, `.declined`).
-- **Armed** (`enabled` and `capabilities.routing` both on): the receipt is
-  required and binding — `route.optionId` must equal its choice.
-
-Shadow evaluation precedes arming: independently select through slp_seat_create
-or run route-decide on each CLI-compatible delegation,
-prepare with the Lead's pick plus the receipt, and let the paired records
-accumulate; the Human pre-registers exit criteria — agreement rate and the
-asymmetric error class — and arms the capability only once the pairs satisfy
-them. The toggle stays off until that data exists.
-
-The CLI compatibility flow in either mode: the Lead authors a routing `brief` (never raw
-`assignmentFile` bytes) and runs `route-decide <request.json>`; the helper
-computes the eligible candidate set deterministically — the same exclusion
-tokens `prepare` enforces — plus an explicit `no-suitable-option` sentinel,
-and emits `{optionId, catalogSha256, declined, warnings, decision}`. `prepare` takes
-`route.decision` and verifies it offline (internal hash, pinned model,
-catalog hash, candidate membership — plus answer match when armed); a
-supplied receipt is verified even with Jev off. The receipt records the full
-answer, probabilities and confidence — confidence is evidence, never a
-routing threshold. Receipts prove consistency, not authenticity. In armed
-mode the reason trail is that recorded distribution, not Lead prose; in
-shadow mode the Lead's prose rationale still applies alongside the receipt.
-
-Every failure is closed: missing config/key, an OpenRouter or TypeSafe
-outage, timeout, empty eligible set, out-of-set choice or stale catalog hash
-all refuse rather than guess. A decline emits its receipt and exits nonzero —
-the pool is Human-owned, so escalate rather than retry. Controlled
-degradation: while armed an outage blocks only the dependent delegation; the
-Human disables the capability in the Manager card and Lead judgment resumes.
-
-Keys are stored write-only through the UI and disclosed as `hasKey` in status.
-The 0600 file protects against other users, not same-user processes; daemon-home
-integrity remains the boundary. Typed output guarantees shape, not correctness.
-The Human's pool defines policy; neither Jev confidence nor a model label grants
-permission, supplies calibrated task fitness or replaces required review.
-
-### Communication supervision (optional)
-
-Supervision is a second opt-in capability, configured in the
-**Supervision** section of the SLP screen
-(`<daemonHome>/slp-runtime/state/supervision.json`, file schema 3, 0600, sha256
-CAS). It is off by default — configuring Jev alone never enables
-observation. The card has one **Supervision** switch (the Jev
-`supervision` capability; turning it on shows what is sent and what it
-costs first), then two plain choices:
-
-- **Which Leads** — *All SLP Leads* (daemon defaults: every SLP Lead the
-  plugin discovers, an exact `slp-<family>-lead` seen in a lifecycle event or
-  verified by refresh; unchecked Leads are left out) or *Selected Leads*
-  (one explicit route per checked Lead; an explicit route always wins over
-  defaults). Leads are picked by name from the app's agent list. Each
-  Lead's room stays separate.
-- **When an issue is found** — *Record only* (`shadow`: assess and record) or
-  *Record and alert a Supervisor* (`notify`: also prompt the Supervisor you
-  pick from the list).
-- **Advanced** — the daemon-wide confidence threshold (0.5–1, default 0.9)
-  and the wait before alerting.
-
-If the plugin cannot look an agent up when you save (seen live on host
-0.9.1), the save still lands and the card says so; that Lead is watched
-only once its next turn is seen in the expected workspace.
-
-Each Peer handback is assessed as soon as it lands, through Jev's rubric-3
-questions (obligations are per turn: a closure-only message such as an
-accepted-and-closed notice needs only a fitting acknowledgment, while a bare
-"ACK"/"Done" never answers a message that still asks for work): does the Lead's brief carry the obligations this task needs,
-does the handback answer what was asked (complete/missing/failed/unverified,
-ownership, blocker needs), and did the Lead's later communication dispose of
-the obligation the handback raised — including through another Peer or an
-escalation to the Supervisor, or `no_action_required` for an informational
-result. The case is re-assessed when new confirmed messages arrive. A
-handling disposition or mishandling must be linked by Jev to one specific
-confirmed message the code offered; silence, acknowledgment or elapsed time
-never becomes a finding. Findings are independent per axis and immutable:
-a later message resolves a finding only when Jev links it as the specific
-correction. The pending delay is a checkpoint — brief/handback findings are
-delivered only after it, giving the Lead time to correct first.
-
-The detector judges communication only — it never infers authority,
-certifies artifacts, accepts work or mutates assignments, and a missing or
-unverifiable input keeps that axis `unknown`. In `notify` mode a code-generated
-alert ("Suspected communication issue — review required") with bounded,
-untrusted excerpts goes to the route's Supervisor (or the default
-recipient), at most once per finding and recipient. Before every send the
-Supervisor is refreshed (exact SLP Supervisor, not archived, active) and the
-route rechecked; a changed route cancels, never falls back. The attempt is
-recorded before the send (a corrupt or unreadable attempt history blocks
-delivery until repaired, never reset); a failure or timeout is reported
-`notification delivery uncertain` and never retried. A running Supervisor is
-not prompted — delivery waits until it is idle, but a prompt that lands as a
-turn starts interrupts that turn (the SDK exposes no queue option). A bell
-in the Supervisor's workspace offers **Open supervision settings** and
-**Turn off alerts** (notify → shadow) through the same server-side CAS
-writer.
-
-External data and cost: shadow and notify send the brief, handback, the
-Lead's confirmed post-handback messages to this Peer, to its other direct
-Peers and to the Supervisor, and the Peer's confirmed sends to the
-configured Jev endpoint; unconfirmed sends go as ids only. Each assessment
-is a billable call (at most six per case). Provider coverage (per axis,
-from real observed timelines): Codex, Claude Code and Pi — brief, handback
-and Lead messages (Lead-role live runs not done yet); Devin — brief and
-handback only, because the Devin provider emits no result for its sends, so
-a Devin Lead's handling is never judged. A mixed room is judged per axis, never
-blocked by one family. Upgrading to this coverage turns existing supervision
-settings off until you re-save them in the Manager (Restore). The report route is not machine-readable on this host
-(`report-route-unverifiable` is disclosed, not a gate). Open cases and the
-queue are process-local: a restart does not replay missed turns; only the
-bounded metadata rings survive (`state/supervision-cases.json` and
-`state/supervision-deliveries.json`, ≤200 entries or 30 days, no bodies).
-A schema-1 file from an earlier version reads with every route off until the
-Human re-enables it — an upgrade never widens transmission or turns on
-delivery. Live end-to-end validation and model evaluation have not run; see
-[docs/spec/supervision-integration.md](spec/supervision-integration.md).
 
 ### Desk bridge availability
 
@@ -1010,8 +867,8 @@ reporting.
 Use slp_seat_create for both Lead and Peer, including existing same-Git worktree
 workspaces. A new worktree uses separately authorized Paseo create_workspace,
 then slp_seat_create placement existing; the Lead owns host setup within that
-grant. create_agent remains compatibility/recovery. Server selection/receipts
-replace caller routes/prepare/route-decide choreography on the ordinary path;
+grant. create_agent remains compatibility/recovery. Server selection
+replaces caller routes/prepare choreography on the ordinary path;
 CLI/task compatibility retains its explicit pins. Consume returned source/target
 and native evidence; do not repeat its formation checks without drift or a gap.
 

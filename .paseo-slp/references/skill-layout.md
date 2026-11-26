@@ -7,7 +7,7 @@ Two skill homes, by audience:
 
 | Home | Ships in payload | Holds |
 |---|---|---|
-| `skills/<name>/` | Yes — every install receives it | Skills for repositories using paseo-slp (onboarding, e2e) |
+| `skills/<name>/` | Yes — every install receives it | Skills for repositories using slp-revibed (onboarding, e2e) |
 | `.agents/skills/<name>/` | No | Skills for maintaining this repository only (upstream-sync) |
 
 Codex reads `.agents/skills/` directly. Claude reads `.claude/skills/`, so each

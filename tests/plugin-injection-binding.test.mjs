@@ -122,7 +122,7 @@ function receiptFor(claimedHome, overrides = {}) {
   const pending = pendingOp(randomUUID());
   return {
     schemaVersion: 1,
-    pluginId: 'paseo-slp',
+    pluginId: 'slp-revibed',
     target: { hostId: HOST, daemonHome: claimedHome },
     stableRoot,
     revision: 0,

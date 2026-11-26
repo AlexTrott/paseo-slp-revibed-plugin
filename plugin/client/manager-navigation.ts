@@ -5,8 +5,6 @@ export const MANAGER_SECTIONS = [
   { id: "overview", label: "Overview" },
   { id: "profiles", label: "Profiles" },
   { id: "pool", label: "Peer pool" },
-  { id: "jev", label: "Routing / Jev" },
-  { id: "supervision", label: "Supervision" },
   { id: "language", label: "Language" },
   { id: "maintenance", label: "Maintenance" },
 ] as const;

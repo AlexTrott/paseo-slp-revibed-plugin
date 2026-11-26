@@ -1,6 +1,6 @@
 # Repository setup
 
-Use the installed [onboarding skill](../skills/paseo-slp-onboarding/SKILL.md)
+Use the installed [onboarding skill](../skills/slp-revibed-onboarding/SKILL.md)
 when asked to onboard/reconfigure a repo, even if not registered as a native
 skill. It owns discovery, proposal, confirmed write and validation.
 

@@ -28,7 +28,7 @@ const formation = {
 export const DeskSeatCreateInput = z.discriminatedUnion("role", [
   z.object({ ...formation, role: z.literal("lead") }).strict(),
   z.object({ ...formation, role: z.literal("peer"), runtime: DeskTaskRuntimePin.optional()
-      .describe("Full pool/Jev pins."),
+      .describe("Full pool pins."),
     selection: z.object({ optionId: DeskTaskRuntimePin.shape.optionId, thinkingOptionId: z.string().regex(/^[a-zA-Z0-9._-]+$/).nullable().optional() }).strict().optional()
       .describe("Independent returned pick."),
     routingRequirements: z.object({ crossProvider: z.boolean().optional(), referenceAgentId: id.optional() }).strict().optional(),

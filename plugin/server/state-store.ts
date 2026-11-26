@@ -2,8 +2,7 @@ import { guardPresetWrite } from "./peer-pool-compatibility.ts";
 // Plugin-owned state files under <stableRoot>/state — readers, the file
 // names, and the atomic 0600 write (a uuid-named temp sibling + rename, so
 // a crash never leaves a half-written file for the next reader). Shared by
-// the manager's role-routing/peer-pool writes and the jev module's
-// config/key writes. Bounded: set-language keeps its deliberate direct
+// the manager's role-routing/peer-pool writes. Bounded: set-language keeps its deliberate direct
 // write (the file is a one-line preference, not a routing artifact), and
 // this module is not a general persistence layer.
 import { randomUUID } from "node:crypto";
@@ -134,8 +133,8 @@ export function readPeerPoolFile(file: string, softErrors: boolean): PeerPoolFil
 
 
 // ---------------------------------------------------------------------------
-// The five state-file RPCs (wave 11 S5) — the same class of operation as
-// jev.ts: plugin-owned files, no journal, no mutex, no authority gate.
+// The five state-file RPCs (wave 11 S5) —
+// plugin-owned files, no journal, no mutex, no authority gate.
 // `uuid` arrives as a dep; home verification shares the §8.1 check in
 // server/daemon-home.ts with this store's "not a link" message for a
 // non-regular config.json (the message these RPCs carried in manager.ts).

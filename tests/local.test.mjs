@@ -70,7 +70,7 @@ test('install preserves exact candidate bytes; rollback preserves unrelated sibl
   writeFileSync(join(dir, 'human.txt'), 'preserve');
   install(root, target);
   assert.deepEqual(verifyInstall(target).candidate, identity(root));
-  assert.equal(existsSync(join(target, 'skills/paseo-slp-onboarding/SKILL.md')), true);
+  assert.equal(existsSync(join(target, 'skills/slp-revibed-onboarding/SKILL.md')), true);
   assert.throws(() => install(root, target), /EEXIST/);
   uninstall(target);
   assert.equal(existsSync(target), false);
@@ -94,7 +94,7 @@ test('onboarding Markdown resource links resolve from an installed package', t =
     const path = join(directory, entry.name);
     return entry.isDirectory() ? walk(path) : path.endsWith('.md') ? [path] : [];
   });
-  for (const file of walk(join(installed, 'skills/paseo-slp-onboarding'))) {
+  for (const file of walk(join(installed, 'skills/slp-revibed-onboarding'))) {
     const markdown = readFileSync(file, 'utf8');
     for (const match of markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
       const target = match[1].split('#')[0];
@@ -123,8 +123,8 @@ test('installed common protocol supports combined configuration without losing g
   const transition = base.split('| Transition:')[1].split('| Investigation:')[0];
   assert.ok(transition.indexOf('Gate on preparation') < transition.indexOf('execution checkpoint/grant'));
   assert.match(transition, /outcome verdict/);
-  const skill = text('skills/paseo-slp-onboarding/SKILL.md').replace(/\s+/gu, ' ');
-  const examplesRaw = text('skills/paseo-slp-onboarding/SKILL.md');
+  const skill = text('skills/slp-revibed-onboarding/SKILL.md').replace(/\s+/gu, ' ');
+  const examplesRaw = text('skills/slp-revibed-onboarding/SKILL.md');
   const examples = examplesRaw.replace(/\s+/gu, ' ');
   assert.ok(!skill.includes('templates/profiles/'));
   assert.match(skill, /Resolve applicable decisions from evidence\/current grant/);
@@ -256,21 +256,21 @@ test('prepare --schema prints the request contract without a request file, recei
   assert.match(bad.stderr, /takes no request file/);
 });
 
-test('route-decide --schema prints the request contract and --out persists the result', t => {
+test('route-choices --schema prints the request contract and --out persists the result', t => {
   const dir = fixture(t);
   const env = { PATH: '' };
   const cli = join(root, 'bin/slp.mjs');
-  // --schema runs without a request file, a daemon home or jev.json.
-  const schema = JSON.parse(execFileSync(process.execPath, [cli, 'route-decide', '--schema'], { env, encoding: 'utf8' }));
-  assert.match(schema.request.brief, /nonempty STRING of raw task/);
-  assert.match(schema.request.brief, /Structured forms.*refused/);
-  const clash = spawnSync(process.execPath, [cli, 'route-decide', 'x.json', '--schema'], { env, encoding: 'utf8' });
+  // --schema runs without a request file or a daemon home.
+  const schema = JSON.parse(execFileSync(process.execPath, [cli, 'route-choices', '--schema'], { env, encoding: 'utf8' }));
+  assert.match(schema.request.repository, /absolute repository/);
+  assert.match(schema.description, /no operation admission/);
+  const clash = spawnSync(process.execPath, [cli, 'route-choices', 'x.json', '--schema'], { env, encoding: 'utf8' });
   assert.equal(clash.status, 1);
   assert.match(clash.stderr, /takes no request file/);
   // --out writes the RESULT bytes — the response, never the request file —
   // creating parent directories as needed.
   const out = join(dir, 'nested', 'schema.json');
-  execFileSync(process.execPath, [cli, 'route-decide', '--schema', '--out', out], { env, encoding: 'utf8' });
+  execFileSync(process.execPath, [cli, 'route-choices', '--schema', '--out', out], { env, encoding: 'utf8' });
   assert.deepEqual(JSON.parse(readFileSync(out, 'utf8')), schema);
   // The same flag persists a plan result (not just schema modes).
   const installed = join(dir, 'release'); install(root, installed);
@@ -282,7 +282,7 @@ test('route-decide --schema prints the request contract and --out persists the r
   assert.equal(plan.modeId, 'auto');
   assert.equal(plan.modeIdSource, 'binding');
   // --out requires a path and is not valid everywhere.
-  const missing = spawnSync(process.execPath, [cli, 'route-decide', '--schema', '--out'], { env, encoding: 'utf8' });
+  const missing = spawnSync(process.execPath, [cli, 'route-choices', '--schema', '--out'], { env, encoding: 'utf8' });
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /--out requires a path/);
   const invalid = spawnSync(process.execPath, [cli, 'monitor', 'x.json', '--out', out], { env, encoding: 'utf8' });
@@ -298,7 +298,7 @@ test('--out refuses to overwrite the request file', t => {
   const request = join(dir, 'request.json');
   writeFileSync(request, json({ installed, workspaceId: 'wks-x', repository: root, assignment: 'out overwrite check', binding }));
   const bytes = readFileSync(request);
-  for (const command of ['prepare', 'prepare-handoff', 'route-decide']) {
+  for (const command of ['prepare', 'prepare-handoff', 'route-choices']) {
     const run = spawnSync(process.execPath, [cli, command, request, '--out', request], { env, encoding: 'utf8' });
     assert.equal(run.status, 1, command);
     assert.match(run.stderr, /--out must not resolve to the request file/);

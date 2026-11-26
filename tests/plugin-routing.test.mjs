@@ -470,7 +470,7 @@ const poolFixture = {
     modeId: 'fast',
     suitableFor: ['bounded coding tasks'],
     avoidFor: ['open-ended research'],
-    notes: 'Local-only annotation — never sent to Jev.',
+    notes: 'Local-only annotation.',
   }],
 };
 
@@ -702,7 +702,7 @@ test('plugin PeerPool schema and package validateCatalog agree on every verdict'
     ['missing policy', { version: 1, options: [seat] }, false],
     ['id bad pattern', pool({ options: [opt({ id: 'Peer_X' })] }), false],
     ['id empty', pool({ options: [opt({ id: '' })] }), false],
-    ['id is the Jev decline sentinel', pool({ options: [opt({ id: 'no-suitable-option' })] }), false],
+    ['id is the former decline sentinel, now an ordinary id', pool({ options: [opt({ id: 'no-suitable-option' })] }), true],
     ['quotaFallback array', pool({ quotaFallback: [] }), false],
     ['quotaFallback empty object', pool({ quotaFallback: {} }), false],
     ['quotaFallback string', pool({ quotaFallback: 'peer-eng' }), false],

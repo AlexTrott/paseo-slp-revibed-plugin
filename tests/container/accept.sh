@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# In-container acceptance suite for the paseo-slp install mechanism.
+# In-container acceptance suite for the slp-revibed install mechanism.
 # Runs entirely against a disposable fake HOME/PASEO_HOME; the repository is
 # mounted read-only at /src. Prints CONTAINER_ACCEPTANCE_OK only when every
 # check passes; any failure exits 1 after printing CONTAINER_ACCEPTANCE_FAIL.

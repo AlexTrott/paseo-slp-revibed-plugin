@@ -1,7 +1,7 @@
 # Paseo upstream baseline
 
-Operational facts for the `paseo-slp-upstream-sync` skill
-(`.agents/skills/paseo-slp-upstream-sync/SKILL.md`). Each sync reads this file
+Operational facts for the `slp-revibed-upstream-sync` skill
+(`.agents/skills/slp-revibed-upstream-sync/SKILL.md`). Each sync reads this file
 to start from the last assessed release and updates it at handback, including
 a "no plugin change" outcome.
 

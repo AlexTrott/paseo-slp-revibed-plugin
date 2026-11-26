@@ -197,8 +197,7 @@ profile bytes, exact request/response and actual runtime settings. Supervisor
 forms Lead through slp_seat_create from the fresh saved slp-lead profile.
 Lead forms ordinary Peers through slp_seat_create with runtime/selection omitted;
 when choices are returned, it supplies an independent selection.optionId.
-The server pins the pool/Jev route; record the returned option/hash/settings and,
-under armed Jev, the retained decision receipt's distribution. The
+The server pins the pool route; record the returned option/hash/settings. The
 routes/prepare/create_agent chain is only CLI compatibility on its assigned path.
 Profile inventories cannot override the Peer pool. U2 traces profiles for
 Supervisor/Lead and project option/hash/settings for Peer, including both families

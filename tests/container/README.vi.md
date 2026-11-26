@@ -1,6 +1,6 @@
 # Container harness — kiểm thử cài đặt + serve disposable
 
-Harness Docker kiểm chứng cơ chế cài đặt paseo + plugin `paseo-slp` từ chính
+Harness Docker kiểm chứng cơ chế cài đặt paseo + plugin `slp-revibed` từ chính
 checkout này, hoàn toàn trong container: không cài trên host, không đụng home
 thật, không đăng ký daemon host, không auth thật.
 
@@ -19,7 +19,7 @@ thật, không đăng ký daemon host, không auth thật.
 
 Làm gì:
 
-1. Build image `paseo-slp-container-harness:node24-paseo0.17.5` từ
+1. Build image `slp-revibed-container-harness:node24-paseo0.17.5` từ
    `node:24-bookworm` pin theo digest
    (`sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4`),
    cài sẵn `@getpaseo/cli@0.17.5` — version nằm trong range
@@ -61,7 +61,7 @@ Làm gì:
 2. Chạy đúng `build` commands trong `paseo-plugin.json` trên bản copy writable
    `/serve/plugin-src` (directory source không được daemon chạy build — chỉ
    git/npm managed source mới có), rồi `paseo plugin install` qua daemon RPC.
-3. Poll `paseo plugin ls` tới khi plugin `paseo-slp` `status=running`;
+3. Poll `paseo plugin ls` tới khi plugin `slp-revibed` `status=running`;
    verify `GET /api/health`, `GET /` trả HTML web UI, `paseo status` probe OK.
 4. In `CONTAINER_SERVE_READY` và giữ daemon chạy.
 
@@ -71,13 +71,13 @@ tế khi chạy:
 - Web UI: `http://127.0.0.1:16767/` (mặc định; đổi bằng tham số port)
 - Health: `http://127.0.0.1:16767/api/health`
 
-Dừng và dọn (xóa container `paseo-slp-container-serve`):
+Dừng và dọn (xóa container `slp-revibed-container-serve`):
 
 ```bash
 ./tests/container/stop         # hoặc: make -C tests/container serve-stop
 ```
 
-Log daemon + plugin trong container: `docker logs -f paseo-slp-container-serve`
+Log daemon + plugin trong container: `docker logs -f slp-revibed-container-serve`
 (hoặc `make serve-logs`).
 
 Bảo đảm không-chạm-host: `--cap-drop ALL`, `--no-new-privileges`, không mount

@@ -70,7 +70,7 @@ protocol text cannot provide a target-bound editable preview or enforce Save.
 Alongside the existing id/provider/model/settings/eligibility fields, v2 has:
 
 - `displayName`, `description`: Human text; enabled entries require both.
-- `selectionHints`: optional advisory text sent to Lead/Jev.
+- `selectionHints`: optional advisory text shown to the Lead.
 - `notes`: private, optional text, never sent to routing.
 - `templateOrigin`: optional provenance only; no reserved-ID behavior.
 - `modelProvider`: retained optional legacy metadata; cross-provider does not use it.
@@ -97,33 +97,28 @@ entry, with no invented default.
 
 The same choice set exposes the Human pool policy, shared selection guidance,
 model/effort labels and descriptions, preset hints, explicit rules and pairs
-to Lead and Jev. Choose the smallest sufficient configured capability and
+to the Lead. Choose the smallest sufficient configured capability and
 supported effort for actual ambiguity, dependencies and verification difficulty;
 task labels and brief length alone justify no escalation. Human descriptions
 and constraints remain authoritative; names/provider/model suffixes create no
 fixed tier or price ranking. Selection guidance is advisory, not a claim that
 any particular lower model can complete a task.
-The v2 Jev instructions interpret all eligible entries,
-including arbitrary custom entries, against the raw brief. Criteria keys identify
-pairs, not preset names. Private notes are excluded. Preflight exposes exclusions;
-it never calls Jev or admits an operation. The set is bounded to 64 pairs / 24 KiB;
+Private notes are excluded. Preflight exposes exclusions;
+it never admits an operation. The set is bounded to 64 pairs / 24 KiB;
 exceeding it reports an error and a narrowing action, never truncates silently.
 
-Off chooses a sole pair or asks the Lead for `selection:{optionId,thinkingOptionId}`.
-Shadow always requires the Lead's independent pair and retains the Jev pair.
-Armed binds Jev's full pair; a supplied independent pair must agree. Receipt and
-route bind catalog hash, v2 semantics and a hash of policy/guidance,
+A sole pair is taken; otherwise the Lead supplies `selection:{optionId,thinkingOptionId}`.
+The route binds catalog hash, v2 semantics and a hash of policy/guidance,
 capabilities/context/choices, including host effort meanings.
 Fresh create/delivery revalidation rejects drift. Replay retains its pinned
-decision without another Jev call. Selection never overlays effort after routing,
-changes a running seat, retries a decline or authorizes a cost escalation.
+selection. Selection never overlays effort after routing,
+changes a running seat or authorizes a cost escalation.
 
 `route-selected` retains the policy, guidance and chosen descriptor for v2.
 Verified native formation returns a compact `routingSelection` with selection
-origin, preset/effort, description/hints, decision hash and receipt-owner
+origin, preset/effort, description/hints and receipt-owner
 agent/request ID. It complements native runtime observations; it is not proof
-of task quality. Jev's typed API returns choice/probability, not a prose
-rationale. Lead records its independent fit reason and relays available
+of task quality. Lead records its independent fit reason and relays available
 selection evidence to Supervisor/Human. `slp_operation_get` remains native-caller
 scoped; a Supervisor querying a Lead's request as itself cannot infer receipt
 loss. Historical receipt bytes and access authority remain unchanged.
@@ -146,13 +141,13 @@ excludes the branch rather than guessing. Model changes within one runtime
 provider do not satisfy the rule. Existing `modelProvider` fields remain
 preserved as unused metadata. Keep the original `different-model-provider`
 wire literal for saved-pool compatibility; routing semantics are pinned as
-`peer-presets-v2-runtime-provider`, rejecting old decision receipts. Different
+`peer-presets-v2-runtime-provider`. Different
 providers do not establish independent authority, mandate or evidence.
 
-CLI `route-choices <request.json|->` reads the same v2 pairs without Jev or
-admission, including when routing is off. Copy the chosen optionId/thinkingOptionId,
+CLI `route-choices <request.json|->` reads the same v2 pairs without
+admission. Copy the chosen optionId/thinkingOptionId,
 catalogSha256/selectionSha256 and routingContext into prepare.route. The
-`route-choices --schema` and `route-decide --schema` outputs describe the inputs.
+`route-choices --schema` output describes the inputs.
 CLI compatibility supplies fresh provider/model descriptors plus routingContext
 (reference runtime observations), selectionSha256 and explicit thinkingOptionId;
 prepare remains offline and validates these pins. Native formation/dispatch

@@ -245,7 +245,7 @@ test('Peer carrier locators are allowlisted to the required bundle; a legacy tra
   const off = roleBundle(installed, 'peer', env);
   assert.deepEqual(paths(off.instructions), peerLocators);
   assert.ok(!off.instructions.includes('Work tracker:'));
-  for (const reference of ['governance.md', 'monitoring.md', 'orchestration.md', 'provider-routing.md', 'jev-routing.md']) {
+  for (const reference of ['governance.md', 'monitoring.md', 'orchestration.md', 'provider-routing.md']) {
     assert.ok(!paths(off.instructions).some(path => path.endsWith(`/references/${reference}`)), `${reference} is not a Peer locator`);
   }
 
@@ -267,15 +267,15 @@ test('Peer carrier locators are allowlisted to the required bundle; a legacy tra
       .map(path => join(installed, path)).sort();
     assert.deepEqual(entries.map(entry => entry.path).sort(), expected,
       `${role} retains its required bundle and every receipt-declared reference`);
-    assert.ok(entries.some(entry => entry.path === join(installed, 'src/references/jev-routing.md')));
+    assert.ok(entries.some(entry => entry.path === join(installed, 'src/references/provider-routing.md')));
     assert.ok(entries.some(entry => entry.path === join(installed, 'src/references/task-execution.md')));
   }
 
   // A receipt-declared reference deleted from disk still reports missing.
-  rmSync(join(installed, 'src/references/jev-routing.md'));
+  rmSync(join(installed, 'src/references/provider-routing.md'));
   const missing = policyLocators(installed, 'lead', env);
-  assert.deepEqual(missing.find(entry => entry.path === join(installed, 'src/references/jev-routing.md')),
-    { path: join(installed, 'src/references/jev-routing.md'), missing: true });
+  assert.deepEqual(missing.find(entry => entry.path === join(installed, 'src/references/provider-routing.md')),
+    { path: join(installed, 'src/references/provider-routing.md'), missing: true });
 });
 
 test('instructions <role> prints the exact bundle bytes on stdout and metadata on stderr', t => {
@@ -593,7 +593,7 @@ test('tiny policy keeps protocol-owned ceremony separate from required gates and
   assert.match(lead, /Tiny labels and missing\/stale protocols grant no exception/);
   assert.match(lead, /Reuse full relevant references\/ or protocol text only when known unchanged/);
   assert.match(readFileSync(join(installed, 'src/references/provider-routing.md'), 'utf8').replace(/\s+/gu, ' '),
-    /Catalog hash, eligibility and Jev receipts must also be fresh/);
+    /Catalog hash and eligibility must also be fresh/);
   assert.match(lead, /Read \.paseo-slp\/workspace-protocol\.md fully on assignment entry/);
   assert.match(protocol, /Lean: short inline brief\/formation/);
   assert.match(protocol, /Peer is default; direct Lead writes need the grant below/);

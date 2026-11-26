@@ -70,8 +70,6 @@ import { join, resolve, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { hash, readJson, verifyInstall } from './package.ts';
 import { isManagedRuntime, managedHome } from './managed-home.ts';
-import { readJevConfig } from './jev.ts';
-import { observeJevKey } from '../jev-state.ts';
 
 // H13: the plugin's RPC surface (status, local-target, ...) is reachable only
 // through the Manager UI or a hand-rolled WS frame — no `paseo plugin invoke`
@@ -117,27 +115,6 @@ function ownedConfigScan(config: HostConfig) {
   return { providers, profiles, injectIntoAgents: config?.daemon?.mcp?.injectIntoAgents === true };
 }
 
-// Jev surface: presence-only, never key material. hasKey is an lstat probe of
-// jev-<kind>.key; keyPermissionsOk reports whether the file denies group/other
-// access. A corrupt jev.json is reported as an error string, not silently OFF.
-const jevStatus = (home: string) => {
-  const keyFileProbe = (kind: string) => observeJevKey(join(home, 'slp-runtime'), kind);
-  try {
-    const config = readJevConfig(home);
-    const kind = config?.provider?.kind ?? 'openrouter';
-    const { hasKey, keyPermissionsOk } = keyFileProbe(kind);
-    if (config === null) return { configured: false, hasKey, keyPermissionsOk };
-    return {
-      configured: true, enabled: config.enabled, capabilities: config.capabilities,
-      // A disabled config exposes no provider — the enabled-only fields are
-      // not validated on the OFF path, so they are reported as absent.
-      provider: config.provider === null ? null : { kind: config.provider.kind, baseUrl: config.provider.baseUrl, model: config.provider.model },
-      hasKey, keyPermissionsOk,
-    };
-  } catch (error) {
-    return { configured: true, ...keyFileProbe('openrouter'), error: (error as RuntimeError).message };
-  }
-};
 
 export function runtimeStatus(explicit?: string | null) {
   const { daemonHome, source } = localTarget(explicit);
@@ -170,7 +147,7 @@ export function runtimeStatus(explicit?: string | null) {
       state: ownedScan === null ? 'INACTIVE'
         : ownedScan === undefined ? 'UNKNOWN'
         : orphaned.length ? 'RECOVERY_REQUIRED' : 'INACTIVE',
-      receipt: null, roleRouting, communicationLanguage, jev: jevStatus(home),
+      receipt: null, roleRouting, communicationLanguage,
       ...(orphaned.length ? { orphanedEntries: orphaned } : {}),
       gaps: [...gaps,
         'no receipt — live conflicts, family availability and managedProfiles are daemon-computed views'],
@@ -249,7 +226,7 @@ export function runtimeStatus(explicit?: string | null) {
       })),
       retainedCount: (receipt.retained ?? []).length,
     },
-    roleRouting, communicationLanguage, jev: jevStatus(home),
+    roleRouting, communicationLanguage,
     checks, gaps,
   };
 }

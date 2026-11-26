@@ -65,9 +65,7 @@ import { hash } from './package.ts';
 import { families, roles, providerId } from './profiles.ts';
 import { settingIdPattern, unsafeModelPattern, rejectRouteKeys, verifyProvider,
   runtimeSettingKeys, profileRouteKeys, swe2ModelPattern } from './binding.ts';
-import { readJevConfig, verifyReceipt } from './jev.ts';
-import { catalogTokenConflicts, seatTokenConflict, ROUTING_VOCABULARY_VERSION } from "../../../shared/runtime/routing-vocabulary.ts";
-import { DESK_FORMATION_REASONS } from "../../../shared/runtime/desk-contract.ts";
+import { catalogTokenConflicts, seatTokenConflict } from "../../../shared/runtime/routing-vocabulary.ts";
 
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonempty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
@@ -79,10 +77,6 @@ export function validateCatalog(catalog: unknown): Catalog {
   const ids = new Set();
   for (const option of catalog.options as unknown[]) {
     if (!record(option) || !nonempty(option.id) || !/^[a-z][a-z0-9-]*$/.test(option.id) || ids.has(option.id)) throw new Error('Invalid or duplicate routing option id');
-    // The id collides with the Jev decline sentinel — letting a seat take it
-    // would hard-error every route-decide on this pool, so it is refused at
-    // the same shape gate as any other invalid id.
-    if (option.id === ROUTE_DECLINE_CANDIDATE) throw new Error(`Routing option id "${ROUTE_DECLINE_CANDIDATE}" is reserved for the Jev decline sentinel`);
     ids.add(option.id);
     if (!families.includes(option.provider as string) && !(option.provider === '' && option.enabled !== true)) throw new Error(`Routing option ${option.id}: provider must be one of ${families.join(', ')}`);
     if (!Array.isArray(option.roles) || !option.roles.length || option.roles.some(role => !roles.includes(role))) throw new Error(`Routing option ${option.id}: invalid roles`);
@@ -244,8 +238,8 @@ export function readCatalog(repository: string, home = paseoHome()): ResolvedCat
 }
 
 // Deterministic eligibility — one predicate, two consumers (view and
-// enforcement): catalogBinding refuses on these tokens and jev-routing builds
-// its candidate set from the empty-token set. Closed vocabulary, never a
+// enforcement): catalogBinding refuses on these tokens and discovery lists
+// the empty-token set. Closed vocabulary, never a
 // fused sentence: `disabled`, `availability:<state>`, `role-not-listed`.
 export function optionExclusions(option: CatalogOption, role: string) {
   const excluded = [];
@@ -257,64 +251,14 @@ export function optionExclusions(option: CatalogOption, role: string) {
 
 export const eligibleOptions = (catalog: Catalog, role: string) => catalog.options.filter(option => optionExclusions(option, role).length === 0);
 
-// The routing-decision contract shared with jev-routing.ts: exactly one
-// choice question; its answer is an eligible option id or the decline
-// sentinel — an explicit "no suitable option" outcome recorded on the receipt.
-export const ROUTE_DECISION_QUESTION = 'route_option';
-export const ROUTE_DECLINE_CANDIDATE = 'no-suitable-option';
-
-// Lead chooses the option, not an enum/disposition-to-profile mapping.
-// Jev routing has two live modes (per-daemon jev.enabled + capabilities.routing):
-//   - ARMED (capabilities.routing===true): a route.decision receipt is
-//     REQUIRED and binding — route.optionId must equal the receipt choice; a
-//     decline receipt fails closed (escalate, do not retry).
-//   - SHADOW (enabled but capability not armed): a supplied receipt is still
-//     verified for consistency — hash, capability, catalog hash, the exact
-//     route_option question set, context.role, candidate membership — but the
-//     Lead's route.optionId decides; the plan records BOTH picks (jevChoice,
-//     declined) so agreement rate and asymmetric error classes can be measured
-//     before the Human arms the capability.
-// Verification is offline consistency (internal hash, catalog hash, candidate
-// membership) — consistency, not cryptographic authenticity.
+// The Lead chooses the option, not an enum/disposition-to-profile mapping.
 export function catalogBinding(repository: string, role: string, providers: Provider[] | undefined, route: Route, home?: string) {
   if (Object.hasOwn(route, 'catalogFile')) throw new Error('Routing is repository-scoped; use repository/.paseo-slp/slp-routing.json, not route.catalogFile');
   const catalog = readCatalog(repository, home);
   if (route.catalogSha256 !== catalog.sha256) throw new Error('Routing catalog changed or hash missing; read routes again before selecting');
-  if (catalog.version === 2) return bindPresetCatalog(catalog, role, providers, route, home ?? paseoHome());
+  if (catalog.version === 2) return bindPresetCatalog(catalog, role, providers, route);
   if (route.selectionSha256 !== undefined || route.routingContext !== undefined) throw new Error("Preset selection pins require a v2 pool; v1 routing remains unchanged");
-  const decision = route.decision as import('./jev.ts').VerifiedJevReceipt | null | undefined;
-  const jevConfig = readJevConfig(home ?? paseoHome());
-  const jevMode = jevConfig !== null && jevConfig.enabled === true && jevConfig.capabilities.routing === true;
-  let jevChoice;
-  let jevDeclined = false;
-  if (decision != null) {
-    verifyReceipt(decision);
-    if (decision.context?.capability !== 'routing') throw new Error('Jev decision receipt is not a routing decision');
-    if (decision.context.catalogSha256 !== catalog.sha256) throw new Error('Jev decision receipt was issued against a different catalog — run route-decide again');
-    // The receipt is bound to the vocabulary version it was issued under —
-    // a semantic change to the token set ships as a new version, and a stale
-    // receipt must not route under a different meaning (§7.2, §9).
-    if (decision.context.vocabularyVersion !== ROUTING_VOCABULARY_VERSION) {
-      throw new Error(`Jev decision receipt was issued under vocabulary ${decision.context.vocabularyVersion ?? 'none'} — the package now speaks ${ROUTING_VOCABULARY_VERSION}; run route-decide again`);
-    }
-    const questionNames = Object.keys(decision.questions);
-    if (questionNames.length !== 1 || questionNames[0] !== ROUTE_DECISION_QUESTION) {
-      throw new Error(`Jev routing decision receipt must carry exactly the ${ROUTE_DECISION_QUESTION} question`);
-    }
-    if (decision.context.role !== role) throw new Error(`Jev decision receipt was issued for a different role — run route-decide for ${role}`);
-    // A disabled config carries no provider — there is no configured model to
-    // compare the receipt against, so that check applies only while Jev is on.
-    if (jevConfig?.provider != null && decision.model !== jevConfig.provider.model) {
-      throw new Error('Jev decision receipt was issued by a different model than the configured provider — run route-decide again');
-    }
-    jevChoice = (decision.answers[ROUTE_DECISION_QUESTION] as { choice?: unknown } | null)?.choice;
-    if (typeof jevChoice !== 'string') throw new Error(`Jev decision receipt lacks a ${ROUTE_DECISION_QUESTION} choice answer`);
-    jevDeclined = jevChoice === ROUTE_DECLINE_CANDIDATE;
-    if (jevDeclined && jevMode) throw new Error('Jev declined to route: the receipt records "no suitable option" — the pool is Human-owned, escalate rather than retry');
-  } else if (jevMode) {
-    throw Object.assign(new Error('Armed Jev routing requires a route.decision receipt for explicit runtime pins. Ordinary slp_seat_create obtains it server-side when runtime is omitted; CLI compatibility obtains it with route-decide.'),
-      { code: DESK_FORMATION_REASONS.jevDecisionRequired });
-  }
+  if (route.decision != null) throw new Error('route.decision is not supported: routing decisions are made by the Lead');
   const option = catalog.options.find(item => item.id === route.optionId);
   if (!option) throw new Error(`Unknown routing option ${route.optionId}`);
   // A conflicted seat is neither a valid standard seat nor a valid custom one
@@ -326,12 +270,6 @@ export function catalogBinding(repository: string, role: string, providers: Prov
   }
   const excluded = optionExclusions(option, role);
   if (excluded.length) throw new Error(`Routing option ${option.id} excluded for ${role}: ${excluded.join(', ')}`);
-  if (decision != null) {
-    if (!Array.isArray(decision.context.candidates) || !decision.context.candidates.includes(option.id)) {
-      throw new Error(`Routing option ${option.id} was not a Jev candidate in the receipt — run route-decide again`);
-    }
-    if (jevMode && jevChoice !== option.id) throw new Error(`route.optionId ${route.optionId} does not match the Jev receipt choice ${jevChoice}`);
-  }
   rejectRouteKeys(route, [...profileRouteKeys, ...runtimeSettingKeys],
     key => `Routing option settings are complete; conflicting route.${key}`);
   if (Object.hasOwn(route, 'quotaFallbackFrom')) {
@@ -343,15 +281,13 @@ export function catalogBinding(repository: string, role: string, providers: Prov
   }
   const provider = providerId(role, option.provider);
   verifyProvider(providers, provider, () => option.provider, provider);
-  const jev: { required: boolean; decision: string; jevChoice?: string; declined?: boolean } = { required: jevMode, decision: decision != null ? 'verified' : 'none' };
-  if (decision != null) Object.assign(jev, { jevChoice, declined: jevDeclined });
   // The repository catalog already won this binding — drift with the live
   // user-scope pool is reported so the two Human-owned sources get
   // reconciled instead of silently diverging.
   const warnings = poolDriftWarnings(catalog.poolDrift, option.id);
   return {
     binding: { provider, model: option.model, modeId: option.modeId, thinkingOptionId: option.thinkingOptionId, features: structuredClone(option.features ?? {}) },
-    routing: { catalogFile: catalog.path, catalogScope: catalog.scope, catalogSha256: catalog.sha256, optionId: option.id, jev, ...(route.quotaFallbackFrom ? { quotaFallbackFrom: route.quotaFallbackFrom } : {}), ...(catalog.poolDrift ? { poolDrift: catalog.poolDrift } : {}) },
+    routing: { catalogFile: catalog.path, catalogScope: catalog.scope, catalogSha256: catalog.sha256, optionId: option.id, ...(route.quotaFallbackFrom ? { quotaFallbackFrom: route.quotaFallbackFrom } : {}), ...(catalog.poolDrift ? { poolDrift: catalog.poolDrift } : {}) },
     warnings,
   };
 }
@@ -372,7 +308,7 @@ export function routeChoices(request: { repository: string; role?: string; paseo
     routingContext: set.context, choices: set.choices, excluded: set.excluded, omittedCount: 0 };
 }
 export function routeChoicesSchema() {
-  return { description: 'Read-only v2 preset + effort discovery; no Jev call or operation admission',
+  return { description: 'Read-only v2 preset + effort discovery; no operation admission',
     request: { repository: 'absolute repository', role: 'optional, default peer', paseoHome: 'optional absolute home',
       providers: 'fresh provider observations with id/enabled/status and per-model models[].thinkingOptions/defaultThinkingOptionId; use the same observations for prepare',
       routingContext: 'optional {crossProvider?:boolean, reference?:{agentId?:string,provider:string,model:string}} from the explicitly relevant reference seat observation' },

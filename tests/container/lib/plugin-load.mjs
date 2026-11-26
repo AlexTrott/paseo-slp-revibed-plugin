@@ -6,7 +6,7 @@
 //      immutable runtime unit to <PASEO_HOME>/slp-runtime/<candidate-sha256>,
 //      verifyPublished, and run the published runtime's own CLI checks.
 // PASEO_HOME must point at the fake home (config.json present) so the
-// supervision observer resolves exactly like production.
+// served home resolves exactly like production.
 import { execFileSync } from 'node:child_process';
 import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -36,12 +36,12 @@ const server = {
 const cleanup = contribute(server);
 eq(typeof cleanup, 'function', 'contribute() returns a cleanup function');
 eq(registrations.map(r => r.name).sort(), [
-  'activate', 'catalog', 'deactivate', 'disable-supervision-notifications',
+  'activate', 'catalog', 'deactivate',
   'enforcement-recover-lock', 'enforcement-runtime-pin', 'enforcement-status',
-  'get-jev', 'get-peer-pool', 'get-role-routing', 'get-supervision',
-  'get-supervision-status', 'get-workspace-workflow', 'local-target', 'reconcile',
-  'set-jev', 'set-jev-key', 'set-language', 'set-peer-pool', 'set-role-routing',
-  'set-supervision', 'status', 'test-jev',
+  'get-peer-pool', 'get-role-routing',
+  'get-workspace-workflow', 'local-target', 'reconcile',
+  'set-language', 'set-peer-pool', 'set-role-routing',
+  'status',
 ], 'full RPC surface registered');
 if (registrations.some(r => typeof r.handler !== 'function')) fail('a registered RPC handler is not a function');
 ok('every RPC handler is callable');

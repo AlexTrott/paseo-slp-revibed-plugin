@@ -11,16 +11,15 @@ The word "default" below names the package-owned v1 definitions, not the starter
 
 | Decision | Why |
 |---|---|
-| Ship a closed vocabulary with the same definitions for every user, Lead and Jev. | The two fields are only comparable when they talk about one task space; do not let each pool invent its own meaning for a tag. |
+| Ship a closed vocabulary with the same definitions for every user and Lead. | The two fields are only comparable when they talk about one task space; do not let each pool invent its own meaning for a tag. |
 | Ship both token lists ready-made for all 12 archetypes in §6. | The user is choosing a runtime to carry out work that has already been described, not composing that work. |
 | Display a standard seat's tokens as read-only; custom seats are freely editable. | The package guarantees the meaning of the standard set; to diverge, create a custom seat rather than silently overwriting the shared contract. |
 | Do not require every seat to declare every axis; allow token overlap between seats. | An axis that does not help discriminate need not be filled, and having the same suitability scope is a valid outcome. |
 | Declaring all the domains a task requires takes priority over silence on domain, before cost is compared. | Matching work/depth does not prove the expertise obligation is met; tokens unrelated to the task create no advantage. |
 | `avoidFor` is a suitability warning, not a prohibition. | Permissions, phases and review gates have their own contracts; the token must not masquerade as an enforcement mechanism. |
-| A homogeneous pool still picks the cheapest/lightest adequate seat; it does not decline on a tie. | `no-suitable-option` is for the case where no suitable option exists, its current meaning at `plugin/server/runtime/cli/jev-routing.ts:91`. |
-| The package maintains English guidance for Jev versioned together with the vocabulary. | English tokens alone are not enough to convey the meaning of AND/OR or `bounded`; the header currently marks Jev as English-primary and does not send `notes` (`plugin/server/runtime/cli/jev-routing.ts:10`). |
+| A homogeneous pool still picks the cheapest/lightest adequate seat; a tie is not a reason to refuse. | Declining is for the case where no suitable option exists. |
 
-The reading baseline is the working tree of branch `feat/jev-routing`, HEAD `ef19372`, with uncommitted changes. The notation `archetypes.ts:line` below always points at `plugin/shared/archetypes.ts`. That file currently provides 12 templates, with empty provider/model and disabled (`plugin/shared/archetypes.ts:26`, `plugin/shared/archetypes.ts:38`). A comment still allows the Human to shape the list themselves (`plugin/shared/archetypes.ts:10`); the new contract moves responsibility for the meaning of the 12 standard templates to the package.
+This spec was first written against an earlier design that also had an external routing-decision service; that service has been removed and the Lead reads these rules directly. The notation `archetypes.ts:line` below always points at `plugin/shared/archetypes.ts`. That file currently provides 12 templates, with empty provider/model and disabled (`plugin/shared/archetypes.ts:26`, `plugin/shared/archetypes.ts:38`). A comment still allows the Human to shape the list themselves (`plugin/shared/archetypes.ts:10`); the new contract moves responsibility for the meaning of the 12 standard templates to the package.
 
 ## 2. The four axes shared by both fields
 
@@ -102,23 +101,23 @@ By default, read the workflow from the assignment and the protocol in force: wit
 | A task with multiple domains must be supported on each domain. | A seat declaring software and tests can support either domain or a task needing both; declaring only tests must not let the product-fixing obligation of a task needing both be dropped. OR over the value set is a choice per obligation, not a license to drop an obligation. |
 | Declaring all required domains takes priority over declaring them partially or not at all. | When the other requirements are all suitable and warnings have been handled, a seat declaring all of the task's domains goes into the priority group; a seat declaring only part or omitting the domain axis goes into the fallback group. The rule applies equally to all six domains; no privileged domain group is created. |
 | `avoidFor`: OR over the whole list. | `depth:open`, `domain:data` warns on open or data; not only on a task that is both open and data. One intersecting domain already creates a warning. |
-| Avoid beats suitable advice when both match. | The conclusion is "has suitable points but the warning must be handled"; do not sum scores to erase a warning and do not auto-drop the seat. Lead/Jev may still pick it if the task's specific reason shows it is adequate. |
+| Avoid beats suitable advice when both match. | The conclusion is "has suitable points but the warning must be handled"; do not sum scores to erase a warning and do not auto-drop the seat. the Lead may still pick it if the task's specific reason shows it is adequate. |
 | One token in both fields is a contradictory assertion. | On a standard seat this is a package content error to fix in the next package version; on a custom seat show a warning but do not fix the user's content for them. When reading, avoid still beats suitable advice. The §6 token set has no such conflict. |
 | An absent axis means **no suitability assertion on that axis**. | It is still "no information yet", not "supports every value"; omitting domain keeps the seat considerable but does not put it level with a seat that declares the full domains. Omitting an axis is a complete package choice, not a blank awaiting the user. |
 | `avoidFor: []` means the package sets no general warning for that seat. | This is a settled value, not a remainder awaiting input nor a promise of "can do everything". `suitableFor: []` says there is no positive description and is not used for any standard seat in §6. |
 | No scoring by token count or number of declared axes. | Only whether **the domains the task demands** are fully declared matters; adding unrelated domains, repeating tokens or declaring more axes does not raise priority. Two seats both declaring all required domains are equal on this criterion even if one has more tokens. |
 | Token overlap between seats is valid. | The package keeps the duplication when the task scope is the same; only the user-chosen runtime can create a cost or quality difference. |
-| Missing facts are not by themselves infeasibility. | A poor brief must be clarified; an empty axis, an avoid warning or tied options are not reasons to return `no-suitable-option`. |
+| Missing facts are not by themselves infeasibility. | A poor brief must be clarified; an empty axis, an avoid warning or tied options are not reasons to refuse every option. |
 
 **Fixed selection order:**
 
 1. Determine the task's obligations from the brief and assignment sources: work, depth, flow and the set of domains actually needed. "Review patch" with no content does not yet permit concluding the task has no domain obligation. When the brief has enough content, do not make the user write domain labels themselves.
 2. Consider the options eligible by runtime, the assignment's independence/permission requirements, and work/depth/flow suitability; an avoid warning must be explained if the seat is still chosen. Declaring one domain correctly does not erase a wrong work, a warning or an unmet runtime constraint.
 3. Among the still-suitable seats, prioritize the group **declaring all of the task's domains**. If at least one adequate seat exists in this group, do not pick a domain-missing seat just because it is cheaper. Price must not be used to turn a still-missing assertion into an existing one.
-4. Only consider the fallback group when the fully declaring group has no seat meeting the task. To choose a fallback seat, Lead/Jev must have a concrete basis for each undeclared obligation from supplied facts — for example comparable results tied to the binding, or suitable capability information provided by the package/provider; the name "deep", missing warnings or a low price are not enough. The basis must be present in the brief/state Jev actually receives, not only in local notes. Do not make the user build a corpus or fix tokens to use this mechanism.
+4. Only consider the fallback group when the fully declaring group has no seat meeting the task. To choose a fallback seat, the Lead must have a concrete basis for each undeclared obligation from supplied facts — for example comparable results tied to the binding, or suitable capability information provided by the package/provider; the name "deep", missing warnings or a low price are not enough. The basis must be present in the brief, not only in local notes. Do not make the user build a corpus or fix tokens to use this mechanism.
 5. **Within the group currently being considered and already adequate**, choose the lowest expected execution cost from trustworthy metadata; if price is missing, prefer the lighter thinking when provider/model are equal and the provider has a clear thinking order; if still tied, choose ascending `option.id`. Do not decline on a tie, and do not claim an ID tie-break has proven the cheapest seat. Do not ask the user to fill in price, priority or a model ranking table.
 
-If no seat declares the full domains and there is also no basis for a fallback seat, the decision-preparation step must report **missing basis regarding domain** and supplement the facts before releasing an automatic choice. This is not `no-suitable-option`: unknown does not mean infeasible. When every seat is genuinely adequate and in the same group — including a homogeneous pool — step 5 still applies. The current typed Jev API has no distinct missing-facts outcome; this policy limit remains explicit in §9.
+If no seat declares the full domains and there is also no basis for a fallback seat, the decision-preparation step must report **missing basis regarding domain** and supplement the facts before releasing an automatic choice. This is not the same as no suitable option: unknown does not mean infeasible. When every seat is genuinely adequate and in the same group — including a homogeneous pool — step 5 still applies.
 
 **Why this rule was chosen:** the package prefers an assertion directly relevant to the task's obligations over silence; it does not score list length, does not certify model capability and does not turn suitability into a permission filter. A multi-element domain set is still checked in full: a seat declaring two of three domains does not automatically beat a seat declaring one of three by score; both are fallback for the missing obligations.
 
@@ -131,7 +130,7 @@ If no seat declares the full domains and there is also no basis for a fallback s
 | The brief requires checking auth bypass but does not state `domain:security`. | Still recognize security from the content and apply domain priority; do not drop to tie-breaking over a missing label. |
 | The brief only says "review patch", with no patch or criteria to determine the obligations. | Supplement the task content; do not treat every generalist as adequate, and do not decline for lack of context. |
 
-The reason for the **price** fallback: the package must be able to choose among already-adequate seats even when cost metadata is missing; this fallback does not apply to filling a gap in expertise obligations. The current payload only has id/provider/model/suitability, not thinking or price (`plugin/server/runtime/cli/jev-routing.ts:83`); implementing the full data is the package's responsibility, not pushed onto the user as more tags. The current `no-suitable-option` already carries the meaning that no option is suitable (`plugin/server/runtime/cli/routing.ts:96`).
+The reason for the **price** fallback: the package must be able to choose among already-adequate seats even when cost metadata is missing; this fallback does not apply to filling a gap in expertise obligations.
 
 **Settled expressiveness limits:** flat suitable describes a product of per-axis value sets; it cannot express exactly "software mechanical or prose open" without also accepting the two cross combinations. Flat avoid cannot express an AND condition across two axes. This version adds no clause syntax: keep the archetypes simple and use the brief to explain exceptions, because the 12 templates do not yet need their own expression language. §6.1 records the intended meaning changes versus the old tags.
 
@@ -207,7 +206,7 @@ For **each standard seat the user wants to enable**, the user only makes the fol
 
 A standard seat's `suitableFor` / `avoidFor` **appear but cannot be edited on the form**, with a "Package-managed" indicator and a "Token definitions" button opening a lookup section right inside the card (§7.4.F). The standard ID is also read-only so that a rename cannot silently turn a standard seat into a custom one. The user does not need to author roles, notes, axis definitions or tie-break rules; those defaults are package-provided. The user is also not asked to fill a cost table or label a historical task set.
 
-The reason for locking tokens: the 16 tokens carry shared meanings that the package has defined, illustrated and explained to Jev; allowing local overwrite would change a standard seat's meaning while the reader still believes they are using the standard version. This is a contract about the form's contents and how a seat is identified — not a filesystem write-block mechanism or a model certification.
+The reason for locking tokens: the 16 tokens carry shared meanings that the package has defined and illustrated; allowing local overwrite would change a standard seat's meaning while the reader still believes they are using the standard version. This is a contract about the form's contents and how a seat is identified — not a filesystem write-block mechanism or a model certification.
 
 Mode is a user pick on both seat kinds — the same catalog picker and free-text fallback as Custom — while feature values keep the configured provider/host defaults and display as a package-owned read-only summary on standard seats. Neither mode nor features self-raise permissions from suitability or add a permission-picking step to the seat setup flow. Initial availability and the peer role are filled by the package. The templates already set `roles: ["peer"]`, disabled and availability ready (`archetypes.ts:26`); the thinking picker already has Provider default and renders nothing at all when the model declares no options (`plugin/client/cards/peer-pool.tsx:1238`). The routing-prose and feature locks on standard seats follow §7.4.B — mode is not part of that lock.
 
@@ -231,7 +230,7 @@ This convention determines the **current management mode**; it does not prove wh
 | Choose to convert a conflicted seat to custom. | Keep the current tokens and configuration, move to a custom ID and update in-pool references such as quotaFallback in the same action; clearly report that references outside the pool must be re-read/updated — do not auto-fix elsewhere. |
 | The package has a new token version. | Standard seats on old tokens go through the same conflict/update flow — no silent update on Load; custom seats receive no automatic token updates. When exporting JSON, export exactly the chosen state rather than sneakily substituting the new standard version. |
 
-Compare the standard token set by exact value set, not entry order; added/removed/changed-value tokens create a conflict. The token update must not silently change a running pool. A conflict is a content error with its own fix path — not `no-suitable-option`; the routing read/prepare path must report the conflict before using that seat as a standard seat. Unrelated seats keep their data untouched.
+Compare the standard token set by exact value set, not entry order; added/removed/changed-value tokens create a conflict. The token update must not silently change a running pool. A conflict is a content error with its own fix path — not a refusal of the pool; the routing read/prepare path must report the conflict before using that seat as a standard seat. Unrelated seats keep their data untouched.
 
 To keep ID-matching meaningful across package versions, do not reuse a standard ID for different work and do not remove an ID from the registry without a path to convert old pools. Similarly, do not change the meaning of a released token under the same string: if a different meaning is needed, create a new value in the next vocabulary version. Comparing only IDs and tokens cannot detect a semantic change that leaves no difference in the data; that is the package's compatibility responsibility, not a reason to add provenance for the user.
 
@@ -239,11 +238,11 @@ No schema extension is needed: zod and `validateCatalog` keep checking data shap
 
 ### 7.3. Freedom and cost of custom seats
 
-A custom seat may freely edit a non-reserved ID, suitability, notes and other configuration within valid data/runtime shapes. **A custom seat's tokens are not required to be among the 16 standard values** — no auto-translation, deletion or forcing into an archetype. The user may write prose or their own vocabulary; English is recommended since Jev is English-primary — not made into a new schema prohibition.
+A custom seat may freely edit a non-reserved ID, suitability, notes and other configuration within valid data/runtime shapes. **A custom seat's tokens are not required to be among the 16 standard values** — no auto-translation, deletion or forcing into an archetype. The user may write prose or their own vocabulary; Any working language is accepted — it is not a schema prohibition.
 
 The default escape path is creating a custom seat from a template then editing, possibly disabling the standard seat if both are not wanted. The real cost is an extra ID and configuration to manage, possibly having to update places that reference the seat, and no longer auto-receiving the package's token fixes. The package does not guarantee custom prose/tags are understood as consistently as the standard vocabulary; the user is responsible for the content they customize. Opening the customization path does not make standard seats editable.
 
-In a pool with both kinds, an **exact verbatim standard token** on a custom seat is still read by the shared definition and joins the §4 domain test; a package seat is not preferred merely for the ownership label. A custom string like `security-expert` is not automatically counted equal to `domain:security`, and custom prose does not change how the package/Jev interprets the 16 standard tokens. Jev may still consider custom content as suitability context, but any part lacking a standard domain assertion must go through the fallback check in §4. That is the trade-off of customization — not a ban on creating or storing custom seats.
+In a pool with both kinds, an **exact verbatim standard token** on a custom seat is still read by the shared definition and joins the §4 domain test; a package seat is not preferred merely for the ownership label. A custom string like `security-expert` is not automatically counted equal to `domain:security`, and custom prose does not change how the package interprets the 16 standard tokens. The Lead may still consider custom content as suitability context, but any part lacking a standard domain assertion must go through the fallback check in §4. That is the trade-off of customization — not a ban on creating or storing custom seats.
 
 ### 7.4. Retained v1 editor contract
 
@@ -259,8 +258,7 @@ draft until Save. Keep declared row order and one open editor; rows expose the
 identity, binding, enabled state and Package-managed/Custom/Token-conflict
 classification. A seat switch edits the draft only. Written roles remain
 `["peer"]` and availability `ready`. Pool policy and quota fallback belong to
-the pool, not each seat. An armed Jev banner describes the saved mode and draft
-candidate set; editing a seat never arms Jev or certifies that row as eligible.
+the pool, not each seat. Editing a seat never certifies that row as eligible.
 
 #### 7.4.B. Seat editor
 
@@ -314,7 +312,7 @@ silently changing models/fallback. No automatic repair is introduced.
 
 #### 7.4.F. Token definitions
 
-The in-editor Token definitions lookup uses the same packaged version as Jev.
+The in-editor Token definitions lookup uses the packaged vocabulary version.
 It opens at the selected token or the full four-axis list, preserving editor,
 dirty state and conflict choices. Include each exact token, question,
 definition, example/counter-example and the OR/AND/domain rules above.
@@ -341,27 +339,15 @@ for the authoritative scope and current diff.
 | There is no dedicated seat for every review lens such as performance or accessibility. | Use work verify and identify the obligation from the brief; pick a seat declaring the fitting domains first — a generalist only under the §4 fallback conditions. | Do not create tokens/seats just to have every name, and do not treat silence on expertise as support for that lens. |
 | Autonomous-long-running's name is broader than the chosen staged default. | Keep the ID to preserve the full 12; explain the scope clearly in the package notes. | Renaming or removing the seat is not needed for a usable default set; it is the first re-evaluation candidate in §10. |
 
-## 9. Jev inputs and verification
+## 9. Verification
 
-The package versions the standard registry, token definitions and English Jev
-guidance together. Structural validators retain free strings on custom seats;
+The package versions the standard registry and token definitions together.
+Structural validators retain free strings on custom seats;
 reserved-name/content checks apply at save and routing boundaries. Runtime
 compatibility tests cover standard/custom/conflict flows, conversion and in-pool
 reference remapping. UI claims need rendering, not source-text occurrence counts.
-
-V1 Jev state includes provider/model, `thinkingOptionId` (explicit null for
-provider default), suitability and the versioned token glossary. Local notes,
-mode/features and prices are not sent. The package has no trustworthy price
-source, so an ID tie-break is not a cheapest-model claim. The desired missing-basis
-policy in §4 does not imply that the current typed Jev API has a separate
-missing-facts outcome; this remains a disclosed limitation.
-
-Shadow evaluation distinguishes under-capable picks, unnecessary cost and wrong
-declines, using counter-examples, overlaps and full domain obligations. Agreement
-alone is not correctness. The Human retains
-[Jev arming authority](../operations.md#jev-assisted-routing-optional).
-Receipts pin state hashes, not a recoverable brief; permitted brief/pool/outcome,
-host-permission evidence and candidate identity need separate provenance.
+The package has no trustworthy price source, so an ID tie-break is not a
+cheapest-model claim.
 
 ## 10. The least confident decisions
 
@@ -372,7 +358,7 @@ These are defaults being chosen — not fields awaiting user input. The evidence
 | Autonomous-long-running suits staged and warns on direct. | A checkpoint is observable before the run, while "long" depends on the runtime and has no reliable shared threshold yet. | Many long direct tasks show clear quality/cost benefit from an autonomous runtime that specialized seats do not deliver; then represent the continuation need or change the seat's scope. |
 | The domain-software warning on test-authoring and spec-docs-writing. | Keeps the main purpose tests/prose; avoids routing product-fixing or behavior-deciding work to these two seats by default. | The corpus shows mixed tests/software or prose/software tasks are routinely handled well by these bindings while the warning makes the router pick worse. |
 | Deep-reasoning warns on every mechanical task. | Rule-following work is where the package prioritizes thrift; avoid using the "deep" name to justify extra spend. | High-risk mechanical tasks show this seat's runtime reduces errors/total cost clearly enough that brief-based selection cannot fix the too-broad warning. |
-| Keeping multi-valued domains with per-obligation support. | Do not let a good tests result mask a missing product-fix part. | Classifiers and Jev routinely add domains for incidental tools, making routing unstable despite equivalent briefs; then the package simplifies the domain rule or how obligations are described. |
+| Keeping multi-valued domains with per-obligation support. | Do not let a good tests result mask a missing product-fix part. | Classifiers routinely add domains for incidental tools, making routing unstable despite equivalent briefs; then the package simplifies the domain rule or how obligations are described. |
 | Prioritizing fully declared domains over generalists, and keeping deep-reasoning domain-less. | A concrete assertion outranks silence; do not batch-add domains to pretend a generalist is specialized. | Binding outcome shows a generalist repeatedly meets the same obligations at better cost, or evidence tasks frequently lack fallback basis; then the package adds a warranted assertion or adjusts the archetype — it does not drop the obligation check. |
 | Standard-seat identification by reserved ID set, with no stored provenance. | Adds no field to keep in sync across validators; read this as a current management convention — do not infer creation history. | Real imports frequently have custom seats colliding on IDs, or multiple standard seats need distinct IDs the Custom flow cannot serve; then revisit identification — still without auto-overwriting old data. |
 | Ascending `option.id` when every reliable tie-breaker is missing. | A stable choice is needed — no declining on ties, and no pretending to know cross-provider prices. | Cost/resource metadata or operational results supply a better ordering; the package replaces the fallback with it — no extra user field. |

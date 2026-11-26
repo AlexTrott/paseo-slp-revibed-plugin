@@ -7,10 +7,8 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { install, json, identity, hash, readJson } from '../plugin/server/runtime/cli/package.ts';
 import { localTarget, runtimeStatus } from '../plugin/server/runtime/cli/runtime-state.ts';
-import { readJevConfig, readJevKey, resolveJev } from '../plugin/server/runtime/cli/jev.ts';
 import { readCatalog } from '../plugin/server/runtime/cli/routing.ts';
 import { roleBundle } from '../plugin/server/runtime/cli/role-bundle.ts';
-import { createJev } from '../plugin/server/jev.ts';
 import { createManager } from '../plugin/server/manager.ts';
 import { createStateStore } from '../plugin/server/state-store.ts';
 import { fakeOrKey } from './fake-secrets.mjs';
@@ -108,7 +106,7 @@ test('status recomputes file-derivable views and marks daemon-only views as gaps
     routing: { schemaVersion: 1, supervisor: { family: 'devin', model: 'm1' }, lead: { family: 'devin', model: 'm2' } },
   });
   writeFileSync(join(home, 'slp-runtime/state/receipt.json'), json({
-    schemaVersion: 1, pluginId: 'paseo-slp', revision: 3, state: 'ACTIVE',
+    schemaVersion: 1, pluginId: 'slp-revibed', revision: 3, state: 'ACTIVE',
     target: { hostId: 'h', daemonHome: realpathSync(home) }, stableRoot: join(home, 'slp-runtime'),
     createdAt: 't', updatedAt: 't', activeOperationId: null, retained: [],
     binding: {
@@ -150,7 +148,7 @@ test('status reports a target mismatch and launcher drift as local evidence', t 
   const home = homeFixture(t, {
     config: { agents: { providers: {} }, daemon: { agentProfiles: [] } },
     receipt: {
-      schemaVersion: 1, pluginId: 'paseo-slp', revision: 1, state: 'ACTIVE',
+      schemaVersion: 1, pluginId: 'slp-revibed', revision: 1, state: 'ACTIVE',
       target: { hostId: 'h', daemonHome: '/some/other/home' },
       binding: {
         candidateSha256: 'f'.repeat(64), runtimePath,
@@ -181,50 +179,12 @@ test('CLI status and local-target are read-only and fail closed', t => {
 
 // ---------------------------------------------------------------------------
 // Writer→reader integration: the plugin's server RPCs own every write under
-// <daemonHome>/slp-runtime/state; the package readers (runtimeStatus, jev
-// config/key, readCatalog, role-bundle) must resolve the same state back.
+// <daemonHome>/slp-runtime/state; the package readers (runtimeStatus,
+// readCatalog, role-bundle) must resolve the same state back.
 // Pins observable reader behavior, never file layout — the upcoming
 // state-store extraction must be able to move storage without these tests
 // changing.
 // ---------------------------------------------------------------------------
-
-test('plugin-written jev config and key read back through the package readers', async t => {
-  const home = makeHome(t);
-  const jev = createJev();
-  const key = fakeOrKey('e2-rtstate');
-  await jev.setJev({
-    schemaVersion: 1, target: targetOf(home), expectedSha256: null,
-    jev: {
-      schemaVersion: 1, enabled: true, capabilities: { routing: true },
-      provider: { kind: 'openrouter', baseUrl: 'https://openrouter.ai', model: 'typesafe/jev-1.13' },
-    },
-  });
-  await jev.setJevKey({ schemaVersion: 1, target: targetOf(home), key });
-
-  // The config view resolves the same document the writer stored.
-  const config = readJevConfig(home);
-  assert.equal(config.enabled, true);
-  assert.deepEqual(config.capabilities, { routing: true });
-  assert.deepEqual(config.provider, {
-    kind: 'openrouter', baseUrl: 'https://openrouter.ai', model: 'typesafe/jev-1.13',
-  });
-  // The key written by set-jev-key is what readJevKey hands a capability call.
-  assert.equal(readJevKey(home, 'openrouter'), key);
-  // Full resolution arms the capability and derives the transport endpoint.
-  const resolved = resolveJev(home, 'routing');
-  assert.equal(resolved.armed, true);
-  assert.equal(resolved.key, key);
-  assert.equal(resolved.provider.endpoint, 'https://openrouter.ai/api/alpha/decisions');
-
-  // The status probe reports presence + permissions — never key material.
-  const status = runtimeStatus(home);
-  assert.deepEqual(status.jev, {
-    configured: true, enabled: true, capabilities: { routing: true },
-    provider: { kind: 'openrouter', baseUrl: 'https://openrouter.ai', model: 'typesafe/jev-1.13' },
-    hasKey: true, keyPermissionsOk: true,
-  });
-  assert.equal(JSON.stringify(status).includes(key), false);
-});
 
 test('manager-written language, routing and pool state read back through the package probes', async t => {
   const home = makeHome(t);
@@ -273,7 +233,7 @@ test('manager-written language, routing and pool state read back through the pac
       id: 'peer-eng', provider: 'codex', roles: ['peer'], model: 'gpt-5-codex',
       enabled: true, availability: 'ready', modeId: 'fast',
       suitableFor: ['bounded coding tasks'], avoidFor: ['open-ended research'],
-      notes: 'Local-only annotation — never sent to Jev.',
+      notes: 'Local-only annotation.',
     }],
   };
   const written = await store.setPeerPool({ schemaVersion: 1, target: targetOf(home), pool, expectedSha256: null });

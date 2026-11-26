@@ -644,24 +644,16 @@ test('repository catalog vs live user-scope pool drift is reported, never reconc
   assert.match(planBroken.warnings.find(w => w.includes('could not be compared')), /peer-pool/);
 });
 
-test('routes output carries the Jev routing mode for the daemon', t => {
+test('routes output is the resolved catalog and carries no routing-service mode', t => {
   const { dir, installed } = fixture(t); install(root, installed);
   const home = join(dir, 'home');
-  const stateDir = join(home, 'slp-runtime', 'state'); mkdirSync(stateDir, { recursive: true });
+  mkdirSync(join(home, 'slp-runtime', 'state'), { recursive: true });
   const repo = join(dir, 'repo'); mkdirSync(repo);
   catalogFixture(repo);
-  const jevPath = join(stateDir, 'jev.json');
-  const routes = () => JSON.parse(execFileSync(process.execPath, [join(installed, 'bin/slp.mjs'), 'routes', repo, '--paseo-home', home], { env: { PATH: '' }, encoding: 'utf8' }));
-  assert.deepEqual(routes().jevRouting, { routing: 'unconfigured' });
-  writeFileSync(jevPath, json({ schemaVersion: 1, enabled: false }));
-  assert.deepEqual(routes().jevRouting, { routing: 'off' });
-  writeFileSync(jevPath, json({ schemaVersion: 1, enabled: true, capabilities: {}, provider: { kind: 'openrouter', model: 'typesafe/jev-1.13' } }));
-  assert.deepEqual(routes().jevRouting, { routing: 'shadow' });
-  writeFileSync(jevPath, json({ schemaVersion: 1, enabled: true, capabilities: { routing: true }, provider: { kind: 'openrouter', model: 'typesafe/jev-1.13' } }));
-  assert.deepEqual(routes().jevRouting, { routing: 'armed' });
-  // A corrupt config reports error, never reads as unconfigured.
-  writeFileSync(jevPath, '{broken');
-  assert.equal(routes().jevRouting.routing, 'error');
+  const routes = JSON.parse(execFileSync(process.execPath, [join(installed, 'bin/slp.mjs'), 'routes', repo, '--paseo-home', home], { env: { PATH: '' }, encoding: 'utf8' }));
+  assert.equal(routes.scope, 'repository');
+  assert.match(routes.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(Object.hasOwn(routes, 'jevRouting'), false);
 });
 
 test('pool validation: provider may be blank only while disabled; priority is not required', () => {

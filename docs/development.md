@@ -150,12 +150,11 @@ Which test covers which area, from what each file imports:
 | `plugin/server/desk-recovery.ts`, `runtime/lock-holder.ts`, `runtime/cli/desk-recovery.ts` | `plugin-desk-recovery`, `plugin-lock-holder`, `desk-recovery-cli` |
 | `plugin/server/enforcement.ts`, `runtime-pin.ts`, `injection-binding.ts`, `role-injection.ts` | `plugin-enforcement`, `plugin-runtime-pin`, `plugin-injection-binding`, `plugin-role-injection` |
 | `plugin/server/manager.ts`, `config-transaction.ts`, `state-store.ts`, `materializer.ts`, `launchers.ts`, `executables.ts` | `plugin-transaction`, `plugin-recovery`, `plugin-routing`, `plugin-materializer`, `plugin-launchers`, `plugin-families`, `plugin-helpers`, `plugin-provider-catalog`, `plugin-entrypoints`, `runtime-layout` |
-| `plugin/server/jev.ts`, `plugin/server/runtime/cli/jev*.ts`, `routing.ts` | `plugin-jev`, `jev`, `routing`, `routing-criteria`, `runtime-state` |
+| `plugin/server/runtime/cli/routing.ts`, `preset-routing.ts`, `seat-selection.ts` | `routing`, `routing-criteria`, `seat-selection`, `peer-presets`, `runtime-state` |
 | `plugin/server/antigravity/*` | `plugin-antigravity`, `plugin-antigravity-mcp` |
 | `bin/grok-role.mjs`, `runtime/cli/grok-acp.ts` | `grok` |
 | `plugin/server/delivered-input.ts` | `plugin-delivered-input`, `plugin-desk-delivery` |
 | `plugin/server/lifecycle-hooks.ts`, `turn-history.ts`, profile/option host seams | `plugin-host-compat`, `plugin-turn-history` |
-| `plugin/server/supervision/*`, `plugin/shared/supervision.ts` | `plugin-supervision`, `plugin-supervision-capture`, `-card`, `-delivery`, `-observer` |
 | `plugin/client/*` (cards, catalog demand, workflow panel, manager state) | `client-catalog-demand`, `client-target-async`, `client-workflow-view`, `plugin-ui`; hooks load through `tests/helpers/*-entry.mts` |
 | `plugin/server/runtime/cli/*` (install, launch, inventory, monitor, notebook, host config, profiles, package) | `install`, `local`, `materialize`, `launch`, `inventory`, `monitor`, `notebook`, `runtime-core-install` |
 | `plugin/server/runtime/cli/candidate-verify.ts`, `report-records.ts`, `report-semantics.ts` | `candidate-verify`, `verify-handback-cli`, `report-records` |
@@ -186,7 +185,7 @@ scheduled for removal, so SLP treats it as optional. SLP reads a
 bounded tail (at most 500 entries) and uses only the exact ended turn when
 both boundaries are visible. Missing turn IDs, truncated history, timeout or
 archive during the read leave the observation unverified. This adapter does
-not establish live supervision or Desk delivery acceptance.
+not establish Desk delivery acceptance.
 
 Host-version seams are single functions: `lifecycleHooks`
 (`plugin/server/lifecycle-hooks.ts`) registers through `addHook` where the
@@ -274,7 +273,7 @@ evidence still follows R1/R2 in `AGENTS.md`.
 ## E2E
 
 To dogfood from an open session on this **source checkout**, ask: **"run the
-package's full E2E"**. The [E2E skill](../skills/paseo-slp-e2e/SKILL.md) walks
+package's full E2E"**. The [E2E skill](../skills/slp-revibed-e2e/SKILL.md) walks
 the session through the whole [scenario manifest](../e2e/scenarios.mjs), using
 child sessions on a real Paseo, collecting evidence, reviewing independently
 and cleaning up, then returns one combined report. Granted permissions, host

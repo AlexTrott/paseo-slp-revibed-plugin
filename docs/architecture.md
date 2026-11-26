@@ -237,18 +237,6 @@ Six rules fall out of the role model and shape everything below:
 │     state/role-routing.json                                      │
 │                            optional supervisor/lead family+model  │
 │                            picks (settings-driven generation)     │
-│     state/jev.json       optional Jev decision-primitive toggles  │
-│     state/jev-*.key      per-daemon provider key (0600,           │
-│                          write-only; status reports hasKey only)  │
-│     state/supervision.json                                        │
-│                          opt-in supervision defaults + per-Lead   │
-│                          routes (0600, sha256 CAS; one writer)    │
-│     state/supervision-cases.json                                  │
-│                          bounded metadata ring written by the     │
-│                          observer (≤200/30d — no bodies)          │
-│     state/supervision-deliveries.json                             │
-│                          notify attempts, written before each     │
-│                          send (≤200/30d — no bodies)              │
 │     state/peer-pool.json the user-scope Peer pool — catalog-      │
 │                          shaped, written whole-file under a       │
 │                          sha256 CAS; sole writer is the Peer      │
@@ -409,7 +397,7 @@ Human ──create_agent(profile=slp-supervisor)──▶ Supervisor seat
                                               Lead seat
                                                     │ slp_seat_create(role=peer)
                                                     │ runtime/selection omitted
-                                                    │ pool/Jev resolved server-side
+                                                    │ pool resolved server-side    
                                                     ▼
                                               Peer seat ──handback──▶ Lead
                                                     │
@@ -482,8 +470,8 @@ the host plugin. `bin/` contains executable bootstraps and transport relays;
 Bootstrap scripts stay JavaScript so the Node version check runs before loading
 TypeScript. The installed CLI and host plugin use the same dependency-free core
 for report validation, desk recovery and handoff recaps. Canonical Node
-core lives in `plugin/server/runtime/`; routing vocabulary, Jev provider and
-credential rules, the family/role registry, recovery constants and the
+core lives in `plugin/server/runtime/`; routing vocabulary,
+credential-shape rules, the family/role registry, recovery constants and the
 bootstrap-safe Node version check live in `plugin/shared/runtime/`. The Manager
 uses the same routing vocabulary and family registry as the CLI.
 Paseo rejects imports outside the plugin root. Keeping runtime source there
@@ -543,10 +531,10 @@ longer qualify under the new owner. See [assignment continuity](work-continuity.
 - Ordinary Peer runtime selection is composed into durable formation, not the
   CLI planner. Replay inspection precedes local choice preflight; choices admit
   no intent. The exclusive executor imports the bound candidate selector, pins
-  one choice/full receipt, then replans offline before create and delivery.
-  Mode/source/catalog drift blocks dependent effects; old full-runtime requests
-  preserve their five phases. Omitted-placement automatic paths use six phases
-  without Jev and seven with it; explicit placement uses at most twelve (of 16). Decline retains evidence without allocating a seat. No default
+  one choice, then replans offline before create and delivery.
+  Source/catalog drift blocks dependent effects; old full-runtime requests
+  preserve their five phases. Omitted-placement automatic paths use six phases;
+  explicit placement uses at most eleven (of 16). No default
   pool, task enrollment or retry/resume scheduler is introduced.
 - Formation placement owns live SDK/Git qualification. Caller/existing source
   and execution roots are separate: local configured top or same-Git main checkout pins pool/protocol; a linked
@@ -569,26 +557,7 @@ longer qualify under the new owner. See [assignment continuity](work-continuity.
   retaining delivery/bytes and five phases. Retained receipts replay before
   qualification. Explicit placement alone records membership-observed;
   ordinary formation still does not bind a task scope.
-- Jev is an explicit helper primitive, not an agent feature: the
-  `route-decide` CLI and admitted ordinary formation invoke routing decisions (no loops, schedules or
-  prepare-time calls), its key lives in per-daemon state, and routing
-  stays deterministic — prepare verifies the receipt offline and fails
-  closed on any config/transport/validation error. The plugin-side
-  supervision observer is the second consumer: it runs only with
-  `capabilities.supervision` on and for Leads the Human opted in through
-  `state/supervision.json` (explicit routes, or daemon defaults for
-  discovered SLP Leads). A serialized queue assesses Peer handbacks and
-  persists metadata-only rings; missing evidence becomes `unknown`, never a
-  violation. Its only action is `notify`: one code-generated review prompt
-  per finding to the verified Supervisor recipient — it never creates,
-  reassigns or cancels agents, accepts work or edits artifacts.
-- No background watchers — status is computed when asked. The single
-  exception is the opt-in observer above: event-driven from lifecycle hooks,
-  with timers only for its own cases (the delivery checkpoint, expiry, and a
-  bounded backoff re-check while a notify recipient is busy), writing only
-  its bounded metadata rings. On the client, the supervision bell re-reads
-  the stored notify recipients every 60 s while the app runs — a cheap
-  status RPC, not a daemon-side watcher.
+- No background watchers — status is computed when asked.
 - The Supervisor/Lead/Peer intelligence uses **policy text + Paseo
   primitives**. The plugin delivers those instructions and enforces the
   desk's authority, state and evidence invariants; workflow acceptance

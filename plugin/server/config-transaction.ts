@@ -625,7 +625,7 @@ export function desiredProfiles(
   routing: RoleRoutingValue | null = null,
 ): ProfileValue[] {
   const notes = (role: string) =>
-    `Managed by the paseo-slp plugin — remove via the SLP surface, not by deleting this profile. SLP ${role}; installed role instructions load automatically. Use Paseo delegation and finish notifications.`;
+    `Managed by the SLP Revibed plugin — remove via its settings screen, not by deleting this profile. SLP ${role}; installed role instructions load automatically. Use Paseo delegation and finish notifications.`;
   const providerFor = (role: "supervisor" | "lead") =>
     ownedProviderId(prefs?.[role]?.family ?? routing?.[role].family ?? family, role);
   const fields = (role: "supervisor" | "lead") => {

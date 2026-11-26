@@ -1,4 +1,4 @@
-# Container acceptance + disposable serve harness for paseo-slp.
+# Container acceptance + disposable serve harness for slp-revibed.
 #
 # Base image: node:24-bookworm, pinned by multi-arch index digest
 # (captured 2026-10-02 via `docker buildx imagetools inspect node:24-bookworm`).

@@ -423,7 +423,7 @@ export function emptyReceipt(input: {
 }): ReceiptValue {
   return {
     schemaVersion: 1,
-    pluginId: "paseo-slp",
+    pluginId: "slp-revibed",
     target: { hostId: input.hostId, daemonHome: input.canonicalHome },
     stableRoot: input.stableRoot,
     revision: 0,

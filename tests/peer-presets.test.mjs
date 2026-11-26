@@ -1,4 +1,4 @@
-import { canonicalJson } from "../plugin/server/runtime/cli/jev.ts";
+import { canonicalJson } from "../plugin/server/runtime/cli/canonical-json.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
@@ -11,8 +11,8 @@ import { readCatalog, catalogBinding, validateCatalog } from '../plugin/server/r
 import { freshPresetPoolForm, peerPoolForm, presetMigrationForm, buildPeerPool, newCustomPreset } from '../plugin/client/manager-state.ts';
 import { observePeerReference, reobservePeerReference } from '../plugin/server/peer-reference.ts';
 
-function fixture(t, mode='off') {
- const f=selectionFixture(t,{mode});
+function fixture(t) {
+ const f=selectionFixture(t);
  f.catalog.version=2;
  f.catalog.options=starterPeerOptions().map((o,i)=>({...o,provider:'codex',model:'fixture-'+i,enabled:true,
   modelProvider:i===4?'other':'primary',modeId:'full-access',notes:'PRIVATE_NOTE_'+i}));
@@ -64,12 +64,12 @@ test('discovery exposes model + pure effort pairs and all custom preset descript
  f.request.selection={optionId:'human-special',thinkingOptionId:'high'};
  const selected=await selectPeerSeat(f.request,f.deps);
  const bound=revalidatePeerSelection(f.request,selected,f.providers);
- assert.equal(bound.binding.thinkingOptionId,'high');assert.equal(bound.routing.optionId,'human-special');assert.equal(f.calls.fetch,0);
+ assert.equal(bound.binding.thinkingOptionId,'high');assert.equal(bound.routing.optionId,'human-special');
  assert.equal(selected.origin,'lead');
 });
 
-test('Lead discovery and Jev receive the same Human pool policy, sufficiency guidance and effort descriptions',async t=>{
- const f=fixture(t,'shadow');f.catalog.policy='Prefer bounded work on the lighter configured option; retain quality checks.';
+test('Lead discovery carries the Human pool policy, sufficiency guidance and effort descriptions',async t=>{
+ const f=fixture(t);f.catalog.policy='Prefer bounded work on the lighter configured option; retain quality checks.';
  f.providers[0].models[1].label='Human-visible model';
  f.providers[0].models[1].description='A workhorse for bounded tasks';
  f.providers[0].models[1].thinkingOptions[0]={id:'low',label:'Light',description:'Less reasoning for settled steps'};
@@ -80,17 +80,12 @@ test('Lead discovery and Jev receive the same Human pool policy, sufficiency gui
  const picked=discovery.choices.find(c=>c.optionId==='balanced'&&c.thinkingOptionId==='low');
  assert.equal(picked.effortLabel,'Light');assert.equal(picked.effortDescription,'Less reasoning for settled steps');
  assert.equal(picked.modelDescription,'A workhorse for bounded tasks');
- let body;const fetchImpl=async(url,init)=>{body=JSON.parse(init.body);return f.fetchImpl(url,init);};
- f.setChoice(picked.candidateId);f.request.selection={optionId:'balanced',thinkingOptionId:'low'};
- const selected=await selectPeerSeat(f.request,{...f.deps,decide:req=>import('../plugin/server/runtime/cli/jev-routing.ts').then(m=>m.routeDecide(req,{fetchImpl}))});
- assert.equal(body.state.policy,discovery.policy);assert.equal(body.state.selectionGuidance,discovery.selectionGuidance);
- assert.deepEqual(body.state.options,discovery.choices);
- assert.match(body.questions.route_option.instructions,/smallest sufficient/);
- assert.match(body.questions.route_option.criteria[picked.candidateId],/Less reasoning for settled steps/);
- assert.ok(!JSON.stringify(body).includes('PRIVATE_NOTE'));
+ assert.ok(!JSON.stringify(discovery).includes('PRIVATE_NOTE'));
+ f.request.selection={optionId:'balanced',thinkingOptionId:'low'};
+ const selected=await selectPeerSeat(f.request,f.deps);
  assert.equal(selected.selectionEvidence.policy,f.catalog.policy);
  assert.deepEqual(selected.selectionEvidence.choice,picked);
- assert.equal(selected.origin,'lead');assert.equal(selected.decisionResult.optionId,'balanced');
+ assert.equal(selected.origin,'lead');
  const before=presetChoiceSet(readCatalog(f.repository,f.home),'peer',f.providers,f.request.routingContext).selectionSha256;
  f.providers[0].models[1].thinkingOptions[0].description='Changed host meaning';
  assert.notEqual(presetChoiceSet(readCatalog(f.repository,f.home),'peer',f.providers,f.request.routingContext).selectionSha256,before);
@@ -132,33 +127,21 @@ test('cross-provider compares runtime families without vendor declarations or re
  assert.equal(presetChoiceSet(f.catalog,'peer',f.providers,f.request.routingContext).choices.length,0,'declared model vendors cannot bypass a same-runtime requirement');
 });
 
-test('armed Jev selects a custom preset + effort, receipts bind capabilities and descriptions',async t=>{
- const f=fixture(t,'armed');Object.assign(f.catalog.options[1],{id:'custom-critic',displayName:'Critic',description:'Challenge the premise',selectionHints:'Find counterexamples'});f.savePool();
- const picked=choice(f,'custom-critic','low');f.setChoice(picked.candidateId);
+test('a selected custom preset + effort binds capabilities and descriptions; a decision pin is refused',async t=>{
+ const f=fixture(t);Object.assign(f.catalog.options[1],{id:'custom-critic',displayName:'Critic',description:'Challenge the premise',selectionHints:'Find counterexamples'});f.savePool();
+ f.request.selection={optionId:'custom-critic',thinkingOptionId:'low'};
  const selected=await selectPeerSeat(f.request,f.deps);
- assert.equal(selected.route.optionId,'custom-critic');assert.equal(selected.route.thinkingOptionId,'low');
- assert.equal(f.calls.logical,1);assert.equal(f.calls.fetch,1);assert.equal(selected.origin,'jev');
+ assert.equal(selected.route.optionId,'custom-critic');assert.equal(selected.route.thinkingOptionId,'low');assert.equal(selected.origin,'lead');
  const bound=revalidatePeerSelection(f.request,selected,f.providers);assert.equal(bound.binding.thinkingOptionId,'low');
- assert.equal(f.calls.logical,1,'offline revalidation never re-decides');
+ assert.equal(Object.hasOwn(bound.routing,'jev'),false);
  const reserialized=JSON.parse(canonicalJson(selected.route));
- assert.doesNotThrow(()=>catalogBinding(f.repository,'peer',f.providers,reserialized,f.home),'receipt dictionary key order is not semantics');
- const invalidEffort={...selected.route,thinkingOptionId:'high'};
- assert.throws(()=>catalogBinding(f.repository,'peer',f.providers,invalidEffort,f.home),/differs from armed/);
+ assert.doesNotThrow(()=>catalogBinding(f.repository,'peer',f.providers,reserialized,f.home),'pin dictionary key order is not semantics');
+ assert.throws(()=>catalogBinding(f.repository,'peer',f.providers,{...selected.route,decision:{kind:'legacy-receipt'}},f.home),/route\.decision is not supported/);
  f.providers[0].models[0].thinkingOptions.push({id:'medium'});
  assert.throws(()=>revalidatePeerSelection(f.request,selected,f.providers),/capabilities/);
  f.providers[0].models[0].thinkingOptions.pop();
  f.catalog.options[1].description='Changed guidance';f.savePool();
  assert.throws(()=>revalidatePeerSelection(f.request,selected,f.providers),/changed/);
-});
-
-test('shadow retains the independent effort pair; armed decline and mismatched effort fail closed',async t=>{
- const f=fixture(t,'shadow');f.setChoice(choice(f,'advanced','high').candidateId);
- await assert.rejects(selectPeerSeat(f.request,f.deps),/independent/);
- f.request.selection={optionId:'advanced',thinkingOptionId:'low'};
- const selected=await selectPeerSeat(f.request,f.deps);assert.equal(selected.route.thinkingOptionId,'low');
- assert.equal(selected.decisionResult.thinkingOptionId,'high');
- f.configure('armed');await assert.rejects(selectPeerSeat(f.request,f.deps),/differs from armed/);
- delete f.request.selection;f.setChoice('no-suitable-option');await assert.rejects(selectPeerSeat(f.request,f.deps),/declined/);
 });
 
 test('unsupported/missing capability and empty allowlist never fall back; large pools do not truncate',async t=>{
@@ -218,7 +201,7 @@ test('installed-candidate native formation pins the returned preset effort and r
  assert.equal(out.result.routingSelection.origin,'lead');assert.equal(out.result.routingSelection.optionId,o.id);
  assert.equal(out.result.routingSelection.thinkingOptionId,'low');assert.equal(out.result.routingSelection.policy,f.catalog.policy);
  assert.equal(out.result.routingSelection.receiptOwnerAgentId,f.row.agentId);assert.equal(out.result.routingSelection.requestId,req.requestId);
- assert.equal(out.result.routingSelection.decisionReceiptSha256,null);
+ assert.equal(Object.hasOwn(out.result.routingSelection,'decisionReceiptSha256'),false);
  assert.equal(out.phases.find(p=>p.name==='route-selected').value.selectionEvidence.choice.description,o.description);
  assert.equal(f.hostCalls.filter(c=>c.kind==='create').length,1);
  assert.equal(f.hostCalls.find(c=>c.kind==='create').options.config.thinkingOptionId,'low');
@@ -238,9 +221,9 @@ test('native cross-provider reference drift after create retains the child and w
  assert.equal((await f.run(req)).receiptSha256,out.receiptSha256);assert.equal(f.hostCalls.filter(c=>c.kind==='create').length,1);
 });
 
-test('public route-choices CLI discovers off-mode v2 pairs and prepares with their pins without Jev',async t=>{
+test('public route-choices CLI discovers v2 pairs and prepares with their pins',async t=>{
  const {execFileSync}=await import('node:child_process');const {join}=await import('node:path');const {fileURLToPath}=await import('node:url');
- const f=fixture(t,'off'),root=fileURLToPath(new URL('..',import.meta.url));
+ const f=fixture(t),root=fileURLToPath(new URL('..',import.meta.url));
  const requestFile=join(f.dir,'choices.json');writeFileSync(requestFile,JSON.stringify({repository:f.repository,paseoHome:f.home,providers:f.providers,routingContext:f.request.routingContext}));
  const result=JSON.parse(execFileSync(process.execPath,[join(root,'bin/slp.mjs'),'route-choices',requestFile],{encoding:'utf8'}));
  assert.equal(result.policy,f.catalog.policy);assert.match(result.selectionGuidance,/smallest sufficient/);
@@ -249,7 +232,7 @@ test('public route-choices CLI discovers off-mode v2 pairs and prepares with the
  const route={optionId:picked.optionId,thinkingOptionId:picked.thinkingOptionId,catalogSha256:result.catalogSha256,selectionSha256:result.selectionSha256,routingContext:result.routingContext};
  assert.equal(catalogBinding(f.repository,'peer',f.providers,route,f.home).binding.thinkingOptionId,'low');
  const schema=JSON.parse(execFileSync(process.execPath,[join(root,'bin/slp.mjs'),'route-choices','--schema'],{encoding:'utf8'}));
- assert.match(schema.description,/no Jev/);
+ assert.match(schema.description,/no operation admission/);
 });
 
 test('v2 save guard rejects old/unverifiable active runtimes and rechecks an awaited binding',async()=>{

@@ -38,7 +38,7 @@ for(const kind of ['caller','existing-id','existing-cwd','worktree-gap']){
    const input=DeskSeatCreateInput.parse({...f.input,placement}),out=await f.run(input);
    if(kind==='worktree-gap'){
     assert.equal(out.result.code,'CAPABILITY_GAP');assert.equal(out.phases.length,0);
-    assert.equal(f.hostCalls.length,0);assert.equal(f.calls.logical,0);
+    assert.equal(f.hostCalls.length,0);
    }else if(topology==='same-repo'){
     assert.equal(out.result.state,'awaiting-caller-delivery',JSON.stringify(out));
     assert.equal(out.result.workspaceId,kind==='caller'?'caller':kind==='existing-cwd'?'opened':'target');
@@ -54,21 +54,21 @@ for(const kind of ['caller','existing-id','existing-cwd','worktree-gap']){
    }else{
     assert.equal(out.result.code,'CAPABILITY_GAP',JSON.stringify(out));
     assert.equal(f.hostCalls.filter(c=>c.kind==='create'||c.kind==='open').length,0);
-    assert.equal(f.calls.logical,0);
+    
    }
-   const calls=f.hostCalls.length,decisions=f.calls.logical,replay=await f.run(input);
-   assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.hostCalls.length,calls);assert.equal(f.calls.logical,decisions);
+   const calls=f.hostCalls.length,replay=await f.run(input);
+   assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.hostCalls.length,calls);
    assert.equal(f.hostCalls.some(c=>c.kind==='forbidden-workspace-create'),false);
   });
  }
 }
 
-for(const delivery of ['caller','server'])test('armed cwd-open '+delivery+' uses worst-case twelve phases without re-deciding',async t=>{
- const f=placementFixture(t,{mode:'armed',count:2});f.setChoice('second');
+for(const delivery of ['caller','server'])test('cwd-open '+delivery+' uses its worst-case eleven phases',async t=>{
+ const f=placementFixture(t);
  const input={...f.input,delivery,placement:{kind:'existing',cwd:f.target,reason:'isolated lane'}};
- const out=await f.run(input);assert.equal(out.phases.length,12);assert.equal(f.calls.logical,1);
+ const out=await f.run(input);assert.equal(out.phases.length,11);
  assert.deepEqual(out.phases.map(p=>p.name),['placement-planned','workspace-open-issued','workspace-open-returned','target-observed',
-  'route-issued','route-selected','prepared','create-issued','create-returned','create-observed','membership-observed',
+  'route-selected','prepared','create-issued','create-returned','create-observed','membership-observed',
   delivery==='caller'?'delivery-handed-off':'send-issued']);
  assert.equal(out.result.state,delivery==='caller'?'awaiting-caller-delivery':'host-accepted');
  assert.equal(f.hostCalls.filter(c=>c.kind==='send').length,delivery==='server'?1:0);
@@ -142,7 +142,7 @@ for(const last of ['workspace-open-issued','target-observed'])test('partial '+la
  const f=placementFixture(t),input={...f.input,placement:{kind:'existing',cwd:f.target,reason:'lane'}};
  const identity={repoKey:'repo',membershipId:f.row.membershipId,agentId:'parent',kind:'seat-create',requestId:input.requestId};
  await createDeskOperations(f.deps.stableRoot).run(identity,input,async phase=>{phase(last,{retained:true});throw new Error('crash');});
- const out=await f.run(input);assert.equal(out.state,'partial');assert.equal(out.phases.length,1);assert.equal(f.hostCalls.length,0);assert.equal(f.calls.logical,0);
+ const out=await f.run(input);assert.equal(out.state,'partial');assert.equal(out.phases.length,1);assert.equal(f.hostCalls.length,0);
 });
 
 test('target HEAD drift after child creation retains ID and withholds delivery',async t=>{
@@ -189,7 +189,7 @@ for(const delivery of ['caller','server'])for(const stage of ['create','delivery
 test('Lead existing workspace uses its saved profile and exact live role registration',async t=>{
  const f=placementFixture(t,{role:'lead'});const out=await f.run({...f.input,placement:{kind:'existing',workspaceId:'target',reason:'lane'}});
  assert.equal(out.result.state,'awaiting-caller-delivery');assert.equal(out.result.runtime.provider,'slp-codex-lead/model/variant');
- assert.equal(out.result.workspaceId,'target');assert.equal(out.phases.length,8);assert.equal(f.calls.logical,0);
+ assert.equal(out.result.workspaceId,'target');assert.equal(out.phases.length,8);
 });
 
 for(const topology of ['foreign','nested'])test('omitted caller placement still rejects '+topology+' repository before child create',async t=>{
@@ -199,10 +199,10 @@ for(const topology of ['foreign','nested'])test('omitted caller placement still 
  assert.match(out.result.message,/different Git repository/);
 });
 
-test('worktree gap wins over corrupt Jev and multiple-option discovery before every host effect',async t=>{
- const f=placementFixture(t,{mode:'error',count:2});
+test('worktree gap wins over multiple-option discovery before every host effect',async t=>{
+ const f=placementFixture(t,{count:2});
  const out=await f.run({...f.input,placement:{kind:'worktree',reason:'lane'}});
- assert.equal(out.result.code,'CAPABILITY_GAP');assert.equal(out.phases.length,0);assert.equal(f.hostCalls.length,0);assert.equal(f.calls.logical,0);
+ assert.equal(out.result.code,'CAPABILITY_GAP');assert.equal(out.phases.length,0);assert.equal(f.hostCalls.length,0);
 });
 
 test('open returned ID remains retained when descriptor refresh later becomes uncertain',async t=>{
@@ -232,11 +232,11 @@ for(const drift of ['directory','HEAD'])test('target '+drift+' drift during prov
  assert.equal(out.result.code,'ROUTE_DRIFT');assert.equal(f.hostCalls.some(c=>c.kind==='create'),false);
 });
 
-test('pinned source configuration drift across provider wait blocks armed decision before network',async t=>{
- const f=placementFixture(t,{mode:'armed',count:2});f.setChoice('second');
+test('pinned source configuration drift across provider wait blocks selection',async t=>{
+ const f=placementFixture(t);
  f.setProviderHook(()=>{f.options[0].notes='drift';f.savePool();});
  const out=await f.run({...f.input,placement:{kind:'existing',workspaceId:'target',reason:'lane'}});
- assert.equal(out.result.code,'ROUTE_DRIFT');assert.equal(f.calls.logical,0);assert.equal(f.hostCalls.some(c=>c.kind==='create'),false);
+ assert.equal(out.result.code,'ROUTE_DRIFT');assert.equal(f.hostCalls.some(c=>c.kind==='create'),false);
 });
 
 test('Git identity drift during the awaited open guard refuses before SDK open',async t=>{
@@ -290,13 +290,13 @@ for(const placement of [undefined,{kind:'caller'}])test('linked checkout without
  assert.match(out.message??out.result.message,/configuration source/i);assert.equal(f.hostCalls.some(c=>c.kind==='create'||c.kind==='open'),false);
 });
 
-test('hop2 source pins revalidate before armed network and before delivery',async t=>{
+test('hop2 source pins revalidate before selection and before delivery',async t=>{
  for(const at of ['decision','delivery']){
-  const f=placementFixture(t,{mode:'armed',count:2});f.row.createCwd=f.target;f.row.workspaceId='target';f.setChoice('second');
+  const f=placementFixture(t);f.row.createCwd=f.target;f.row.workspaceId='target';
   const drift=()=>{f.options[0].notes='main drift';f.savePool();};
   if(at==='decision')f.setProviderHook(drift);else f.setAfterCreate(drift);
   const out=await f.run(f.input);assert.equal(out.result.code,'ROUTE_DRIFT',JSON.stringify(out));
-  assert.equal(f.calls.logical,at==='decision'?0:1);assert.equal(f.hostCalls.some(c=>c.kind==='send'),false);
+  assert.equal(f.hostCalls.some(c=>c.kind==='send'),false);
   assert.equal(Object.hasOwn(out.result,'delivery'),false);
  }
 });
@@ -341,11 +341,11 @@ test('hop2 keeps a configured linked top rather than inheriting main configurati
  assert.equal(selected.source.repository,f.target);assert.equal(selected.route.optionId,'local-only');
 });
 
-test('membership event arriving during a real wait delivers within the fixed twelve-phase budget',async t=>{
- const f=placementFixture(t,{mode:'armed',count:2,registration:'missing'});f.setChoice('second');f.deps.membershipWaitMs=300;
+test('membership event arriving during a real wait delivers within the fixed eleven-phase budget',async t=>{
+ const f=placementFixture(t,{registration:'missing'});f.deps.membershipWaitMs=300;
  let timer;f.setAfterCreate(()=>{timer=setTimeout(()=>f.members.push({...f.row,membershipId:'event-member',agentId:'child',role:'peer',provider:'slp-codex-peer',createCwd:f.target,workspaceId:'opened'}),40);});
  t.after(()=>clearTimeout(timer));const out=await f.run({...f.input,placement:{kind:'existing',cwd:f.target,reason:'lane'},delivery:'server'});
- assert.equal(out.result.state,'host-accepted',JSON.stringify(out));assert.equal(out.phases.length,12);
+ assert.equal(out.result.state,'host-accepted',JSON.stringify(out));assert.equal(out.phases.length,11);
  assert.equal(f.hostCalls.filter(c=>c.kind==='send').length,1);
 });
 

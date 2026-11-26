@@ -1,4 +1,4 @@
-import { canonicalJson } from "./runtime/cli/jev.ts";
+import { canonicalJson } from "./runtime/cli/canonical-json.ts";
 // Read the explicitly named reference seat. Routing compares its observed
 // runtime family; model-vendor declarations are not required.
 import type { PresetRoutingContext } from './runtime/cli/preset-routing.ts';

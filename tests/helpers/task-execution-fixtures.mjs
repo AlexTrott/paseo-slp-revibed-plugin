@@ -325,7 +325,7 @@ export function fixtureDeps(w, ledger, host, task, overrides = {}) {
     host: () => host,
     resolveSeat: overrides.resolveSeat ?? (async () => ({
       provider: 'slp-codex-peer', model: 'm1', modeId: null, thinkingOptionId: null,
-      routing: { optionId: 'opt-seat', catalogSha256: 'c'.repeat(64), jev: { required: false, decision: 'none' } },
+      routing: { optionId: 'opt-seat', catalogSha256: 'c'.repeat(64) },
     })),
     measure: w.measure,
     measureContentMap: createContentMapMeasure(w.fs),

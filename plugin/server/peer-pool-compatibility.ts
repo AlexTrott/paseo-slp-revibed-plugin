@@ -7,7 +7,7 @@ import type { ReceiptValue } from '../shared/contracts.ts';
 import { OperationConflict } from '../shared/contracts.ts';
 import { candidateModulePath } from './candidate-module.ts';
 import { verifyInstall } from './runtime/cli/package.ts';
-import { canonicalJson } from './runtime/cli/jev.ts';
+import { canonicalJson } from './runtime/cli/canonical-json.ts';
 
 export async function guardPresetWrite(stableRoot: string, deps: {
   read?: (root: string) => ReceiptValue | null;

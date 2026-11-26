@@ -1,9 +1,9 @@
 ---
-name: paseo-slp-upstream-sync
-description: Lead-only macro workflow that turns a Paseo upstream release into a plugin impact report and, under an explicit grant, a verified paseo-slp update. Use when a new Paseo release or @getpaseo package version may affect the plugin; skip unrelated dependency bumps and Peer micro-tasks.
+name: slp-revibed-upstream-sync
+description: Lead-only macro workflow that turns a Paseo upstream release into a plugin impact report and, under an explicit grant, a verified slp-revibed update. Use when a new Paseo release or @getpaseo package version may affect the plugin; skip unrelated dependency bumps and Peer micro-tasks.
 ---
 
-# Sync paseo-slp with Paseo upstream
+# Sync slp-revibed with Paseo upstream
 
 Each upstream release becomes an evidence-based **impact report**; a verified
 update follows only when the active assignment grants its exact writes. A
@@ -112,7 +112,7 @@ Connect each material change to the import, payload, lifecycle or process
 behavior it could affect. Start from this map and verify it against current
 code:
 
-| Upstream surface | paseo-slp touchpoints |
+| Upstream surface | slp-revibed touchpoints |
 |---|---|
 | Plugin server contracts, RPC, hooks, lifecycle | `plugin/index.server.ts`, `plugin/server/*` |
 | Plugin client hooks, navigation, UI contracts | `plugin/index.client.tsx`, `plugin/client/*` |

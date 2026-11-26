@@ -2,7 +2,7 @@ import type { Provider } from "./runtime/cli/types.ts";
 import type { PresetRoutingContext } from "./runtime/cli/preset-routing.ts";
 import { reobservePeerReference, type ReferenceHost } from "./peer-reference.ts";
 // Resolve a task's Peer runtime through the verified installed candidate.
-// Pool precedence, eligibility and Jev receipts remain owned by its launch
+// Pool precedence and eligibility remain owned by its launch
 // module. This adapter supplies fresh connected-host provider observations.
 import { pathToFileURL } from "node:url";
 import { candidateModulePath } from "./candidate-module.ts";

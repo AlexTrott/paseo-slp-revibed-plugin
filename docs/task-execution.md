@@ -54,8 +54,8 @@ actual checkout or intended Git base.
    readiness and its reasons. This is a ledger judgment; dispatch also obtains
    fresh host, artifact and placement evidence before admission.
 3. Select a fresh eligible Peer-pool option and its catalog hash. Native
-   dispatch uses the bound runtime's routing rules, including required Jev
-   receipts. It does not accept raw provider overrides as a missing-pool fallback.
+   dispatch uses the bound runtime's routing rules, including required pool
+   pins. It does not accept raw provider overrides as a missing-pool fallback.
 4. Invoke one supervised bootstrap or reuse phase. A reservation and action
    intent precede placement and creation. Bootstrap creates a worker without a
    work prompt. The registered membership, applied runtime, parent, workspace

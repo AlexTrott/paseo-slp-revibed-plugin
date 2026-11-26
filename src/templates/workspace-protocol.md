@@ -97,7 +97,7 @@ Use established checks from the repository/assignment, never commands inferred
 from this template. Checks requiring a clean environment use a full whitelist
 or complete removal of injected variables; partial unsetting can fake failures.
 Read installed provider-routing.md before selection/settings/fallback; it owns
-the conditional Jev branch and fresh runtime evidence.
+fresh runtime evidence.
 
 ## Repository references
 

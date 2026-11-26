@@ -44,8 +44,8 @@ test('paseo-plugin.json parses through the host readPluginManifest', async t => 
   }
   const manifest = await host.readPluginManifest(PLUGIN_DIR);
   assert.deepEqual(manifest, {
-    id: 'paseo-slp',
-    name: 'Paseo SLP',
+    id: 'slp-revibed',
+    name: 'SLP Revibed',
     description: 'Supervisor, Lead and Peer coding-agent teams for Paseo, with a repository desk for assignments, review and evidence.',
     icon: 'assets/icon.png',
     media: [
@@ -256,26 +256,18 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
       'activate',
       'catalog',
       'deactivate',
-      'disable-supervision-notifications',
       'enforcement-recover-lock',
       'enforcement-runtime-pin',
       'enforcement-status',
-      'get-jev',
       'get-peer-pool',
       'get-role-routing',
-      'get-supervision',
-      'get-supervision-status',
       'get-workspace-workflow',
       'local-target',
       'reconcile',
-      'set-jev',
-      'set-jev-key',
       'set-language',
       'set-peer-pool',
       'set-role-routing',
-      'set-supervision',
       'status',
-      'test-jev',
     ],
   );
   for (const { handler } of registrations) {
@@ -291,21 +283,11 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
   for (const { handler } of beforeHooks) {
     assert.equal(typeof handler, 'function');
   }
-  // Shadow-observer lifecycle hooks (Phase B) plus the P2-c desk
-  // registration/revoke handlers — the desk handlers register separately on
-  // the same two events, so those names appear twice.
+  // The P2-c desk registration/revoke handlers plus the task turn-ended and
+  // SDK-stash turn-started handlers: one registration per event.
   assert.deepEqual(
     onHooks.map(h => h.name).sort(),
-    [
-      'agent.archived',
-      'agent.archived',
-      'agent.created',
-      'agent.created',
-      'agent.turn_ended',
-      'agent.turn_ended',
-      'agent.turn_started',
-      'agent.turn_started',
-    ],
+    ['agent.archived', 'agent.created', 'agent.turn_ended', 'agent.turn_started'],
   );
   for (const { handler } of onHooks) {
     assert.equal(typeof handler, 'function');
@@ -316,16 +298,12 @@ test('contribute() registers the RPCs plus the two before-hooks, cleanup unregis
     unregistered.sort(),
     [
       'agent.archived',
-      'agent.archived',
       'agent.create',
       'agent.create',
-      'agent.created',
       'agent.created',
       'agent.session_open',
       'agent.session_open',
       'agent.turn_ended',
-      'agent.turn_ended',
-      'agent.turn_started',
       'agent.turn_started',
     ],
   );
@@ -379,11 +357,11 @@ test('turn_started stashes the SDK for Desk without the optional observer and cl
   assert.equal(deskProbe.deps.taskHost(), null, 'a resumed ACP turn has no SDK slot before its lifecycle start callback');
   assert.equal(deskProbe.deps.paseoRef.current, null, 'Desk has no identity context before turn_started');
   // The desk registers membership lifecycle plus positive task-send
-  // observation. The optional communication observer remains inert.
+  // observation, and nothing else.
   assert.deepEqual(
     registrations.map(r => r.name).sort(),
     ['agent.archived', 'agent.created', 'agent.turn_ended', 'agent.turn_started'],
-    'only desk lifecycle registers without a verified served home; communication supervision stays inert',
+    'only desk lifecycle registers',
   );
   // (c) provenance: driving each handler with an slp-* payload over a
   // non-git cwd yields exactly the desk diagnostic warn and never throws —

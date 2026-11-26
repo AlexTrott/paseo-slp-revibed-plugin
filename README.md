@@ -1,36 +1,44 @@
-<h1 align="center">Paseo SLP</h1>
+<h1 align="center">SLP Revibed</h1>
 
 <p align="center">
-  <a href="README.md">English</a> ·
-  <a href="README.vi.md">Tiếng Việt</a>
+  A <a href="https://paseo.sh">Paseo</a> plugin that runs a <b>Supervisor – Lead – Peer</b> team of
+  coding agents: it separates <i>kinds of judgment</i>, not a chain of command.
 </p>
 
-<p align="center">
-  <b>Supervisor – Lead – Peer</b> for <a href="https://paseo.sh">Paseo</a>: a team of coding agents
-  that separates <i>kinds of judgment</i>, not a chain of command.
-</p>
-
-Give an **SLP Lead** a bounded objective, or work through an optional **SLP Supervisor**.
+Give a **Lead** a bounded objective, or work through an optional **Supervisor**.
 The Lead coordinates independent Peers, integrates their work and returns a project verdict.
 Each seat is an ordinary Paseo agent with its role instructions loaded separately from your task.
 You keep control of intent, important trade-offs and final acceptance.
 
 The plugin also supplies a **repository desk**: durable assignments, current briefs, a native
-task queue, declared scopes, selected review obligations, candidate/check evidence and planned owner handoff.
-Open **Read SLP work** to inspect registered work without reconstructing it from chat.
+task queue, declared scopes, selected review obligations, candidate/check evidence and planned
+owner handoff. Open **Read SLP work** to inspect registered work without reconstructing it from chat.
 
-![Paseo SLP: Human intent and acceptance, Lead and independent Peers, optional Supervisor, and a durable repository desk for work, review, proof and handoff](docs/images/slp-overview.svg)
+![SLP Revibed: Human intent and acceptance, Lead and independent Peers, optional Supervisor, and a durable repository desk for work, review, proof and handoff](docs/images/slp-overview.svg)
 
-https://github.com/user-attachments/assets/a98dc2bf-dfaa-4608-985c-9aa21832a246
+## About this project
 
-## When to use SLP
+SLP Revibed continues [paseo-slp](https://github.com/duongvm57/paseo-slp-plugin) by Vu Duong,
+which is no longer maintained. The name keeps SLP, the Supervisor–Lead–Peer method, and adds a
+nod to vibe coding. This fork keeps the method and the repository desk, and differs in three ways:
+
+- **It tracks current Paseo.** It is developed and tested against Paseo **0.17.5**.
+- **It is smaller.** Jev-assisted routing and communication supervision, both of which sent
+  data to an external judging service, are removed. The Lead chooses each Peer from your pool.
+- **It has a new plugin id**, `slp-revibed`. See [Coming from paseo-slp](#coming-from-paseo-slp).
+
+Everything else keeps its name, so existing repositories and configurations keep working: the
+**SLP Supervisor** and **SLP Lead** profiles, `slp-<family>-<role>` providers, `slp_*` desk tools,
+and each repository's `.paseo-slp/` settings folder.
+
+## When to use it
 
 **Use SLP when:**
 
 - Strong vertical dependencies mean implementation can expose a faulty premise.
 - Architecture, lifecycle or ownership is unclear at the start.
 - Multiple modules, projects, workspaces, owners and integration boundaries need coordination.
-- The project is long or complex enough that the Human does not want to micromanage each agent.
+- The project is long or complex enough that you do not want to micromanage each agent.
 - Coordination provides more value than its overhead.
 
 **Full SLP is unnecessary when:**
@@ -38,13 +46,12 @@ https://github.com/user-attachments/assets/a98dc2bf-dfaa-4608-985c-9aa21832a246
 - The task is small and bounded: simple CRUD or a horizontal extension.
 - Contracts are clear and dependencies are few.
 - One agent can easily handle the work end to end.
-- Coordination overhead exceeds its value.
 
 **In between:**
 
 - Set up `.paseo-slp/workspace-protocol.md` for minimum sufficient coordination.
-- The Lead goes DIRECT → one Peer Engineer; add an Architect or Reviewer only when needed.
-- The Human works directly with the Lead or through an optional Supervisor.
+- The Lead goes direct to one Peer Engineer; add an Architect or Reviewer only when needed.
+- Work directly with the Lead or through an optional Supervisor.
 
 ## How work progresses
 
@@ -92,14 +99,13 @@ The design rationale is in [docs/architecture.md](docs/architecture.md).
 | Keeps a Peer pool that the Lead picks each Peer's runtime from                               | A Peer binding outside the pool during `prepare`                                 | Writes your repository's routing catalog                          |
 | Validates launch arguments offline (`prepare`), with named failures                          | Unverified or incompatible provider inventory supplied to `prepare`              | Runs a monitoring daemon; `monitor` is a scan you invoke          |
 | Records assignments, briefs, decisions, scopes, selected review and candidate/check evidence | Stale revision pins, overlapping declared scopes and unqualified required reviews | Infers acceptance from a handback, an agent status or a green check |
-| Keeps a native dependency queue and performs Lead-invoked dispatch and staged integration | Unruled or unavailable prerequisites, uncertain effect retries and target drift | Dispatches, retries, commits or lands work unattended |
-| Supports planned owner handoff and a read-only workspace work panel                         | An acknowledgment that does not match a usable offer and current revision pins  | Transfers authority through a chat message or a resource account  |
-| Offers opt-in Jev routing and communication supervision                                    | A Jev routing receipt that fails offline verification (hash, model, catalog)     | Enables external services without your configuration              |
+| Keeps a native dependency queue and performs Lead-invoked dispatch and staged integration   | Unruled or unavailable prerequisites, uncertain effect retries and target drift   | Dispatches, retries, commits or lands work unattended             |
+| Supports planned owner handoff and a read-only workspace work panel                         | An acknowledgment that does not match a usable offer and current revision pins    | Sends your prompts or code to a service of its own                |
 
 Saved role choices narrow the Supervisor/Lead providers; all seven Peer providers remain
 pool-driven. Provider entries for unavailable CLIs are disabled. Pool checks apply to
-`prepare` and native task dispatch. Role rules guide agents, while managed launch and desk checks cover their own
-interfaces; repository and shell permissions still come from Paseo and the provider.
+`prepare` and native task dispatch. Role rules guide agents, while managed launch and desk checks
+cover their own interfaces; repository and shell permissions still come from Paseo and the provider.
 
 ## The roles
 
@@ -110,13 +116,13 @@ interfaces; repository and shell permissions still come from Paseo and the provi
 | **Lead**       | Framing, routing, dependencies, integration, the project verdict                       | Pre-solves hard work and hands Peers a typing job        | The **SLP Lead** profile                |
 | **Peer**       | One bounded outcome, as an Engineer, Architect, Reviewer or Scout                      | Spawns other agents                                     | An option in the Peer pool, per task    |
 
-Seats run on **Codex, Pi, Devin, Claude Code, OpenCode, Antigravity or Grok**, mixed freely: two Peers in the same team can use
-different providers, models and effort levels. [OpenCode](docs/opencode.md) uses ACP stdio for
-managed and standalone seats; native OpenCode and V1 are unsupported.
-[Grok](docs/grok.md) uses the official Grok Build CLI over ACP, with an existing
-`grok login` or `XAI_API_KEY` available to the daemon.
-[Antigravity](docs/antigravity.md) requires agy 1.4.4 or newer and the manager
-plugin; it supports full access, with thinking effort selected through the model ID.
+Seats run on **Codex, Pi, Devin, Claude Code, OpenCode, Antigravity or Grok**, mixed freely: two
+Peers in the same team can use different providers, models and effort levels.
+[OpenCode](docs/opencode.md) uses ACP stdio for managed and standalone seats; native OpenCode and
+V1 are unsupported. [Grok](docs/grok.md) uses the official Grok Build CLI over ACP, with an
+existing `grok login` or `XAI_API_KEY` available to the daemon.
+[Antigravity](docs/antigravity.md) requires agy 1.4.4 or newer and the manager plugin; it supports
+full access, with thinking effort selected through the model ID.
 
 Peer Engineer is the default implementation writer. An explicit Human assignment or effective
 workspace protocol can grant a bounded Lead write for clear, reversible work. One writer,
@@ -126,58 +132,50 @@ candidate proof and required independent review still apply; a tiny task grants 
 
 You need:
 
-- Paseo daemon **and app** `>=0.11.0` (minimum supported host; the SDK version this checkout builds against is pinned in `package.json`) for native screen/sidebar UI, with `pluginsEnabled: true` and an effective `mcp.enabled: true`
+- **Paseo 0.17.5** daemon and app, the version this plugin is developed and tested against, with
+  `pluginsEnabled: true` and an effective `mcp.enabled: true`. The manifest still admits hosts
+  from 0.11.0, but older hosts are not tested here.
 - a POSIX daemon host (Linux/macOS), with Node.js 22.x from 22.18, or Node.js 23.6+
   (native TypeScript stripping)
-- the CLI of each provider family you use (Codex, Pi, Devin, Claude, OpenCode, Antigravity, Grok), signed in on the daemon host;
-  Pi needs repeatable `--append-system-prompt` support
+- the CLI of each provider family you use (Codex, Pi, Devin, Claude, OpenCode, Antigravity, Grok),
+  signed in on the daemon host; Pi needs repeatable `--append-system-prompt` support
 - Antigravity needs agy 1.4.4 or newer; standalone CLI installation retains the other six families
 
-Any one supported provider CLI is sufficient; Codex is optional. SLP discovers available CLIs before activation.
-
-### Official Paseo plugin registry
-
-[Paseo SLP in the plugin directory](https://paseo.sh/plugins/duongvm57/slp)
+Any one supported provider CLI is sufficient. Available CLIs are discovered before activation.
 
 ```bash
-paseo plugin install duongvm57/slp
+paseo plugin install git:AlexTrott/paseo-slp-plugin:plugin              # follow the default branch
+paseo plugin install git:AlexTrott/paseo-slp-plugin:plugin --ref <tag>  # or pin a release
 ```
 
-### Direct Git installation
-
-```bash
-paseo plugin install git:duongvm57/paseo-slp-plugin:plugin              # follow the default branch
-paseo plugin install git:duongvm57/paseo-slp-plugin:plugin --ref <tag>  # or pin a release
-```
-
-Tags are listed on [Releases](https://github.com/duongvm57/paseo-slp-plugin/releases). Check it with
-`paseo plugin ls`; the plugin should reach `running`. Installing changes no agent configuration until
-you activate it.
+Check it with `paseo plugin ls`; `slp-revibed` should reach `running`. Installing changes no agent
+configuration until you activate it.
 
 ## First run
 
-1. **Open SLP.** Open **SLP** in Paseo's sidebar (or *Open SLP Overview* from the command palette).
-   SLP automatically discovers available provider CLIs; any one supported family is sufficient.
+1. **Open SLP** in Paseo's sidebar (or *Open SLP Overview* from the command palette).
+   Available provider CLIs are discovered automatically; any one supported family is sufficient.
    You can configure profiles before activation, without opening Maintenance.
-2. **Choose profiles and activate.** In **SLP → Profiles**, choose a provider and an explicit model for
-   **Supervisor** and **Lead**, plus mode, thinking and features where offered. Choose **Save profiles**,
-   then confirm the daemon home and exclusive configuration window when prompted. Saving applies
-   the choices and activates SLP. Keep other configuration writers out while it runs.
-   Models must be set before delegation; Devin uses `swe-2` models. Changes affect future launches,
-   not sessions already running. Maintenance remains available for updates, recovery and executable overrides.
+2. **Choose profiles and activate.** In **Profiles**, choose a provider and an explicit model for
+   **Supervisor** and **Lead**, plus mode, thinking and features where offered. Choose
+   **Save profiles**, then confirm the daemon home and exclusive configuration window when
+   prompted. Saving applies the choices and activates the plugin. Keep other configuration writers
+   out while it runs. Models must be set before delegation; Devin uses `swe-2` models. Changes
+   affect future launches, not sessions already running. Maintenance remains available for
+   updates, recovery and executable overrides.
 3. **Onboard a repository.** Install the onboarding skill, then ask any agent in that repo to
-   *onboard / set up SLP*. It proposes `.paseo-slp/workspace-protocol.md` and the Peer pool, and
-   shows the full diff before writing.
+   *onboard / set up SLP*. It proposes `.paseo-slp/workspace-protocol.md` and the Peer pool,
+   and shows the full diff before writing.
 
    ```bash
-   npx skills add duongvm57/paseo-slp-plugin --skill paseo-slp-onboarding
+   npx skills add AlexTrott/paseo-slp-plugin --skill slp-revibed-onboarding
    ```
 
-4. **Make the Peer pool ready.** If the repo inherits the shared pool, use **SLP → Peer pool** to
+4. **Make the Peer pool ready.** If the repo inherits the shared pool, use **Peer pool** to
    add suitable options with provider, model and available settings, enable them and **Save**.
    If onboarding pins `.paseo-slp/slp-routing.json`, configure that file's options during
-   onboarding. The Manager edits the shared pool; a repo pin takes precedence, and an empty or
-   invalid pin does not fall back to it.
+   onboarding. The settings screen edits the shared pool; a repo pin takes precedence, and an
+   empty or invalid pin does not fall back to it.
 5. **Hand over a task.** Choose **New agent** in the repo's workspace, then the **SLP Lead**
    profile, and give it the title `Lead — <task>` and a bounded objective. If you prefer to work
    through a Supervisor, choose **SLP Supervisor** and the title `Supervisor — <task>` instead.
@@ -191,8 +189,8 @@ A few optional lines make an objective more robust:
 | `Report back …`    | Always: it marks a bounded assignment with a deliverable, not an open conversation |
 | `Heartbeat: …`     | Long work, e.g. `Heartbeat: sweep every 30m until handback`                         |
 
-No skills installed? Paste this into any agent: *"Help me set up Paseo SLP. Read
-https://raw.githubusercontent.com/duongvm57/paseo-slp-plugin/main/docs/agent-guide.md first, then
+No skills installed? Paste this into any agent: *"Help me set up SLP Revibed. Read
+https://raw.githubusercontent.com/AlexTrott/paseo-slp-plugin/main/docs/agent-guide.md first, then
 walk me through it step by step."*
 
 ## Work records and review
@@ -209,86 +207,66 @@ invokes dispatch explicitly: reserve first, create without a work prompt, bind t
 worker's scope, then send work. Dependencies require qualified output judgments and measured
 availability. Integration stages and checks the combined candidate before applying a bounded
 delta to the target; conflicts and uncertain effects stay recorded for reconciliation.
-Stage and backup cleanup uses separately granted steps with finite continuation;
-unresolved resources retain the target reservation.
 See [native task execution](docs/task-execution.md) for the sequence and operational limits.
 
 Assignment handoff keeps the same work ID and history: the current Lead offers it to an
 exact receiving Lead membership, which acknowledges responsibility under revision checks.
-The panel distinguishes current ownership and usable reviews from historical observations,
-and shows handback/settlement claims separately from measurements. See
-[assignment continuity](docs/work-continuity.md) for the sequence and its limits.
+See [assignment continuity](docs/work-continuity.md) for the sequence and its limits, and
+[work coordination](docs/work-coordination.md) for the desk tools and report contract.
 
-The owning Lead can append brief revisions and material decisions through the desk tools.
-Brief, scope and review-plan changes make dependent reviews stale. Lead selects independent
-mandates for material questions and Human/protocol requirements, without a fixed reviewer
-pair or count. New scopes explicitly record required review, no applicable trigger, or an
-authorized exemption. A no-trigger decision does not waive a mandatory gate.
+External trackers and project-specific automation belong to your workspace. The plugin
+uses its own desk and adds no tracker integration.
 
-Handbacks can also carry an optional structured execution, review or adjudication report.
-The renderer preserves the original evidence block; handoff recaps separate supplied claims
-from the freshly measured candidate and disclose missing context. See
-[work coordination](docs/work-coordination.md) for the tools, report and continuity contract.
+## Optional settings
 
-External trackers and project-specific automation belong to your workspace/harness. The plugin
-uses its own desk and does not add a tracker card, tracker RPC or tracker session instructions.
+Both are **off by default**; quota fallback belongs to the selected Peer pool, including a
+repo-pinned pool.
 
-## Optional capabilities
-
-These capabilities are **off by default**. Configure them explicitly in the SLP manager;
-quota fallback belongs to the selected Peer pool, including a repo-pinned pool.
-
-| Capability                                                                  | What it adds                                                                                          |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| [Communication language](docs/operations.md#getting-started)                | Instructs managed seats to use one language with each other; replies to you follow your language       |
-| [Peer quota fallback](docs/operations.md#peer-quota-fallback)               | One designated pool option the Lead may retry on once when a Peer runs out of quota                   |
-| [Jev-assisted routing](docs/operations.md#jev-assisted-routing-optional)    | A calibrated routing receipt from Jev (TypeSafe System One): shadow mode records it, armed mode binds it |
-| [Communication supervision](docs/operations.md#communication-supervision-optional) | Assesses captured Peer handbacks and Lead handling for configured Leads; records findings and optionally alerts a Supervisor |
-
-Jev-powered routing and supervision send the configured inputs or captured communications to
-your chosen Jev service. Review that service and its costs before enabling them.
+| Setting                                                         | What it adds                                                                                     |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [Communication language](docs/operations.md#getting-started)    | Instructs managed seats to use one language with each other; replies to you follow your language |
+| [Peer quota fallback](docs/operations.md#peer-quota-fallback)   | One designated pool option the Lead may retry on once when a Peer runs out of quota              |
 
 ## Updating and removal
 
 ```bash
-paseo plugin update paseo-slp               # git source on the default branch
-paseo plugin update paseo-slp --ref <tag>   # pinned: choose the new ref explicitly
-paseo plugin reload paseo-slp               # directory install: after the checkout changes
+paseo plugin update slp-revibed               # git source on the default branch
+paseo plugin update slp-revibed --ref <tag>   # pinned: choose the new ref explicitly
+paseo plugin reload slp-revibed               # directory install: after the checkout changes
 ```
 
-After an update or reload, open the SLP manager and run **Update SLP runtime** when it offers the new runtime.
-Running sessions keep their existing process and role instructions; new launches use the new
-binding. Managed session opens still require the plugin to be running.
+After an update or reload, open the settings screen and run **Update SLP runtime** when it offers
+the new runtime. Running sessions keep their existing process and role instructions; new launches
+use the new binding. Managed session opens still require the plugin to be running.
 
-To remove it, choose **Deactivate** on the SLP manager first (this removes the providers and
+To remove it, choose **Deactivate** in **Maintenance** first (this removes the providers and
 profiles and keeps the runtime files for sessions still running), then run
-`paseo plugin remove paseo-slp`. Details are in [docs/operations.md](docs/operations.md#upgrading).
+`paseo plugin remove slp-revibed`. Details are in [docs/operations.md](docs/operations.md#upgrading).
 
-### Migrating from 0.6.0 or earlier
+If the settings screen reports a configuration conflict or `RECOVERY_REQUIRED`, use
+**Reconcile → inspect** and resolve the reported entries before retrying.
 
-With no agents running, use the update/reload command above, then open **SLP → Inspect**
-and run **Update SLP runtime**. Saved role preferences and the shared Peer pool are preserved.
-No reinstall or manual state migration is normally needed.
+## Coming from paseo-slp
 
-Check these only if they apply to your installation:
+The plugin id changed from `paseo-slp` to `slp-revibed`, so Paseo treats this as a different
+plugin. Both own the same `slp-*` providers and profiles and must not run side by side.
 
-- **Node:** the daemon host now needs Node `>=22.18.0 <23.0.0 || >=23.6.0`
-  for native TypeScript. Upgrade older Node versions before rebinding.
-- **Repository protocol:** update old tracker/Beads instructions in
-  `.paseo-slp/workspace-protocol.md` using the refreshed onboarding skill and
-  [current template](src/templates/workspace-protocol.md). The plugin does not overwrite
-  this file. Existing explicit review requirements remain binding until you change them.
-- **Tracker integration:** the tracker card, RPCs and `slp.mjs tracker` command are removed.
-  Legacy settings and `.beads/` data are left untouched and no longer used by the plugin;
-  they do not need deleting to upgrade.
-- **Custom scripts:** imports from removed `src/*.mjs` modules need to use the
-  [documented CLI](docs/cli.md). For standalone installs, `npm run install:slp` now
-  previews; `npm run install:slp:apply` applies.
-- **Standalone → plugin:** follow [the migration guide](docs/operations.md#standalone-compatibility-and-migration)
-  to remove the old standalone binding before activation; both paths own the same IDs.
+1. With no SLP agents running, open the old plugin's **Maintenance** and choose **Deactivate**.
+2. `paseo plugin remove paseo-slp`
+3. Install SLP Revibed as above and activate it from **Profiles**.
 
-If Inspect reports a configuration conflict or `RECOVERY_REQUIRED`, use
-**Reconcile → inspect** and resolve the reported entries before retrying Rebind.
+Your saved role choices and the shared Peer pool live under `<daemonHome>/slp-runtime/state/` and
+are picked up again. Repositories need no change: `.paseo-slp/` is read as before.
+
+Two things do not carry over:
+
+- **Jev routing and communication supervision are gone.** A runtime pin that carries a routing
+  decision is refused; Peers are chosen by the Lead. Their old settings files are left on disk
+  and unused. `jev-*.key` there holds your Jev API key, so delete it, along with `jev.json` and
+  `supervision*.json`, from `<daemonHome>/slp-runtime/state/`.
+- **Stuck after upgrading Paseo with the old plugin?** If the old plugin left an activation in
+  `RECOVERY_REQUIRED` on Paseo 0.16 or later, install SLP Revibed without deactivating and use
+  **Reconcile → complete**; see [docs/operations.md](docs/operations.md#activation).
 
 ## Development
 
@@ -298,27 +276,25 @@ From a source checkout, install dependencies with `npm ci`, then run the local c
 npm test                          # runs in a temporary, isolated PASEO_HOME
 npm run typecheck
 npm run check                     # inspect the install-unit identity
-npm run check:plugin-payload       # verify the generated payload is current
+npm run check:plugin-payload      # verify the generated payload is current
 ```
 
-After changing install-unit sources (`package.json`, `install.sh`, `bin/`, `skills/`, `src/`,
-`plugin/server/runtime/` or `plugin/shared/runtime/`), run `npm run generate:plugin-payload`,
-then repeat the payload check. Local checks establish source behavior and payload freshness.
+CI runs on Node 24. After changing install-unit sources (`package.json`, `install.sh`, `bin/`,
+`skills/`, `src/`, `plugin/server/runtime/` or `plugin/shared/runtime/`), run
+`npm run generate:plugin-payload`, then repeat the payload check. Local checks establish source
+behavior and payload freshness; see [docs/development.md](docs/development.md) for host-parity
+runs against a real Paseo install and the live E2E harness.
 
-To dogfood live from a source checkout, ask an open session to *run the package's full E2E*. See
-[docs/development.md](docs/development.md).
-
-Both READMEs use the same overview SVG from `scripts/generate-readme-diagrams.mjs`.
-After editing it, run `node scripts/generate-readme-diagrams.mjs`; use `--check` to verify the SVG.
+The overview SVG comes from `scripts/generate-readme-diagrams.mjs`; after editing it, run
+`node scripts/generate-readme-diagrams.mjs` (`--check` verifies the SVG).
 
 ## Docs
 
 | Read                                             | When you want                                                                   |
 | ------------------------------------------------ | ------------------------------------------------------------------------------- |
-| [Visual explainer](docs/plugin-explained.html) | Bilingual diagrams of plugin lifecycles, work and evidence |
-| [docs/architecture.md](docs/architecture.md)     | The role model, what the plugin adds to Paseo, role delivery and delegation   |
-| [docs/operations.md](docs/operations.md)         | Activation, upgrades, profiles, repository setup, the Peer pool, optional capabilities |
-| [docs/cli.md](docs/cli.md)                       | The offline `slp.mjs` commands: `prepare`, `routes`, `route-decide`, `monitor` and the rest |
+| [docs/architecture.md](docs/architecture.md)     | The role model, what the plugin adds to Paseo, role delivery and delegation     |
+| [docs/operations.md](docs/operations.md)         | Activation, upgrades, profiles, repository setup, the Peer pool                 |
+| [docs/cli.md](docs/cli.md)                       | The offline `slp.mjs` commands: `prepare`, `routes`, `route-choices`, `monitor` and the rest |
 | [docs/work-coordination.md](docs/work-coordination.md) | Durable briefs, decisions, review mandates, reports and the read-only workspace panel |
 | [docs/work-continuity.md](docs/work-continuity.md) | Planned owner handoff, acknowledgment, historical authority and remaining obligations |
 | [docs/task-execution.md](docs/task-execution.md) | Native task queue, supervised dispatch, dependency proof, integration and reconciliation |
@@ -329,8 +305,7 @@ After editing it, run `node scripts/generate-readme-diagrams.mjs`; use `--check`
 
 Technical contracts for individual capabilities live under [docs/spec/](docs/spec/).
 
-<!-- Keep installation requirements, setup steps and examples synchronized with README.vi.md. -->
-
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). SLP Revibed is a fork of paseo-slp; the original copyright notice
+is retained.

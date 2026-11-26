@@ -2,13 +2,13 @@
 # Host entrypoint for disposable serve mode: build the image and start the
 # daemon + web UI container, published to host loopback only.
 #   ./serve [host-port]     (default 16767 → container 6767)
-# Stop with ./stop (or `docker rm -f paseo-slp-container-serve`).
+# Stop with ./stop (or `docker rm -f slp-revibed-container-serve`).
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(cd "$here/../.." && pwd)
-image=paseo-slp-container-harness:node24-paseo0.17.5
-name=paseo-slp-container-serve
+image=slp-revibed-container-harness:node24-paseo0.17.5
+name=slp-revibed-container-serve
 host_port=${1:-${PASEO_SERVE_PORT:-16767}}
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is required" >&2; exit 1; }

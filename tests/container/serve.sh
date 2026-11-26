@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Disposable serve mode: run the real paseo daemon + bundled web UI headless
-# inside this container, install the paseo-slp plugin from a writable copy of
+# inside this container, install the slp-revibed plugin from a writable copy of
 # the mounted checkout, and verify over HTTP. Everything lives under /serve —
 # no host home, auth, relay or daemon registration is touched. The container's
 # listen port must be published to host loopback only (see ./serve).
@@ -100,14 +100,14 @@ while true; do
   plugin_ls=$(paseo plugin ls --home "$PASEO_HOME" --json 2>/dev/null || true)
   state=$(printf '%s' "$plugin_ls" | node -e "
     let rows = []; try { rows = JSON.parse(require('fs').readFileSync(0, 'utf8')); } catch {}
-    const row = (Array.isArray(rows) ? rows : []).find(r => r && r.id === 'paseo-slp');
+    const row = (Array.isArray(rows) ? rows : []).find(r => r && r.id === 'slp-revibed');
     if (!row) { console.log('absent'); }
     else if (row.error) { console.log('failed'); }
     else console.log(row.status ?? 'unknown');
   ")
   case "$state" in
     running) break ;;
-    failed|disabled) paseo plugin logs paseo-slp --home "$PASEO_HOME" 2>/dev/null | tail -30 >&2 || true
+    failed|disabled) paseo plugin logs slp-revibed --home "$PASEO_HOME" 2>/dev/null | tail -30 >&2 || true
            printf '%s\n' "$plugin_ls" >&2
            fail "plugin reached state=$state" ;;
     *) if (( SECONDS >= deadline )); then
@@ -116,7 +116,7 @@ while true; do
   esac
 done
 printf '%s\n' "$plugin_ls" | tee "$ROOT/plugin-ls.json"
-printf 'SERVE_PLUGIN_RUNNING id=paseo-slp\n'
+printf 'SERVE_PLUGIN_RUNNING id=slp-revibed\n'
 
 step "web UI + API over container listen port"
 curl -fsS "http://127.0.0.1:6767/" -o "$ROOT/web-index.html" || fail "web UI root did not answer"

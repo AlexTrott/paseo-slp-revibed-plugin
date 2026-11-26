@@ -1,4 +1,4 @@
-// Server entry for the paseo-slp manager plugin (Option A v1, spec §2).
+// Server entry for the slp-revibed manager plugin (Option A v1, spec §2).
 // Synchronous contribution returning cleanup; the connected API arrives in
 // handlers. Lead wires the lane modules here; manager alone owns the mutation
 // mutex, state transitions and connected SDK calls.
@@ -8,16 +8,12 @@ import type { PluginServerContribution } from "@getpaseo/plugin/server";
 import { lifecycleHooks } from "./server/lifecycle-hooks.ts";
 import { realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { activate, reconcile, deactivate, status, localTarget, catalog, setLanguage, getRoleRouting, setRoleRouting, getPeerPool, setPeerPool, getJev, setJev, setJevKey, testJev } from "./shared/contracts.ts";
-import { disableSupervisionNotifications, getSupervision, getSupervisionStatus, setSupervision } from "./shared/supervision.ts";
+import { activate, reconcile, deactivate, status, localTarget, catalog, setLanguage, getRoleRouting, setRoleRouting, getPeerPool, setPeerPool } from "./shared/contracts.ts";
 import { enforcementStatus, enforcementRecoverLock, enforcementRuntimePin } from "./shared/enforcement.ts";
 import type { Manager } from "./shared/contracts.ts";
 import { loadCatalog } from "./server/provider-catalog.ts";
 import { createManager } from "./server/manager.ts";
-import { createJev } from "./server/jev.ts";
 import { createStateStore } from "./server/state-store.ts";
-import { createSupervisionState } from "./server/supervision/state.ts";
-import { createSupervisionObserver, type SupervisionObserver } from "./server/supervision/observer.ts";
 import { detectDaemonHome, resolveDaemonHome } from "./server/daemon-home.ts";
 import { readInjectionBinding } from "./server/injection-binding.ts";
 import { createDeskSeat } from "./server/desk-seat.ts";
@@ -66,57 +62,14 @@ export default function contribute(server: Parameters<PluginServerContribution>[
     return readWorkspaceWorkflow(input, paseo);
   });
   server.handle(catalog, (input, { paseo }) => loadCatalog(input, paseo));
-  // Plugin-owned state files under slp-runtime/state — same class of
-  // operation as jev: no journal, no mutex, no authority gate.
+  // Plugin-owned state files under slp-runtime/state: no journal, no mutex,
+  // no authority gate.
   const store = createStateStore();
   server.handle(setLanguage, input => store.setLanguage(input));
   server.handle(getRoleRouting, input => store.getRoleRouting(input));
   server.handle(setRoleRouting, input => store.setRoleRouting(input));
   server.handle(getPeerPool, input => store.getPeerPool(input));
   server.handle(setPeerPool, input => store.setPeerPool(input));
-  // Jev (OpenRouter Decisions) — per-daemon config/key under slp-runtime/state;
-  // test-jev is the only handler that touches the network (explicit action).
-  const jev = createJev();
-  server.handle(getJev, input => jev.getJev(input));
-  server.handle(setJev, input => jev.setJev(input));
-  server.handle(setJevKey, input => jev.setJevKey(input));
-  server.handle(testJev, input => jev.testJev(input));
-  // Supervision config (spec supervision-integration.md §Configuration):
-  // private supervision.json under the SERVED daemon home — the store binds
-  // the state path to the home this process actually serves (PASEO_HOME env),
-  // refusing reads/writes it cannot verify. Agent validation on save goes
-  // through the connected SDK; the Command Center/bell actions use the same
-  // CAS writer.
-  // Observer: lifecycle hooks capture the minimal normalized communication
-  // synchronously; a serialized plugin-lifetime queue owns SDK refreshes,
-  // Jev HTTP (via the gated supervision resolver), the bounded metadata ring
-  // and — for `notify` routes only — Supervisor delivery through the hook
-  // context's connected SDK. An unverifiable served home leaves the observer
-  // inert (shadow = null).
-  let observer: SupervisionObserver | null = null;
-  try {
-    const served = detectDaemonHome();
-    // Inert unless the served home is VERIFIED: a default-guessed home would
-    // observe the wrong daemon's state files. Only an exported PASEO_HOME
-    // ("env") proves which home this process serves (spec §Configuration:
-    // the local-target value is a prefill, not proof of host-home mapping).
-    if (served.source === "env") {
-      const binding = resolveDaemonHome(
-        { hostId: "local", daemonHome: served.daemonHome },
-        "config.json must be a regular file, not a link",
-      );
-      observer = createSupervisionObserver({ stableRoot: binding.stableRoot });
-    }
-  } catch {
-    observer = null;
-  }
-  const supervision = createSupervisionState({
-    shadow: stableRoot => observer?.shadow(stableRoot) ?? null,
-  });
-  server.handle(getSupervision, input => supervision.getSupervision(input));
-  server.handle(setSupervision, (input, { paseo }) => supervision.setSupervision(input, paseo));
-  server.handle(getSupervisionStatus, input => supervision.getStatus(input));
-  server.handle(disableSupervisionNotifications, (input, { paseo }) => supervision.disableNotifications(input, paseo));
   // Phase 2 (settings-driven-providers.md): the hook-family thin aliases
   // need the two halves the sentinel gate cannot supply — role-bundle
   // injection at agent.create and the session-open grant overlay. Both hooks
@@ -229,14 +182,6 @@ export default function contribute(server: Parameters<PluginServerContribution>[
     noteTaskApi(paseo);
     deskBridge.notePaseo(paseo);
   });
-  // Observer lifecycle hooks — synchronous capture only; every async step
-  // (refresh, Jev HTTP, ring write, notify delivery) runs on the observer's
-  // own queue.
-  const ob = observer;
-  const offCreated = ob === null ? null : hooks.on("agent.created", (event, { paseo }) => ob.onCreated(event.agent, paseo));
-  const offArchived = ob === null ? null : hooks.on("agent.archived", (event, { paseo }) => ob.onArchived(event.agent, paseo));
-  const offStarted = ob === null ? null : hooks.on("agent.turn_started", event => ob.onStart(event));
-  const offEnded = ob === null ? null : hooks.on("agent.turn_ended", (event, { paseo }) => ob.onTurn(event, paseo));
   return () => {
     offAgentCreate();
     offSessionOpen();
@@ -246,11 +191,6 @@ export default function contribute(server: Parameters<PluginServerContribution>[
     offDeskRevoke();
     offTaskEnded();
     offDeskContextStart();
-    offCreated?.();
-    offArchived?.();
-    offStarted?.();
-    offEnded?.();
-    void ob?.stop();
     deskBridge.stop();
     manager.close();
   };

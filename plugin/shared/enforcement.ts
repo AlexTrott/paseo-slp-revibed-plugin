@@ -2586,6 +2586,8 @@ export const DeskTaskRuntimePin = z
   .object({
     optionId: DeskEntityId,
     catalogSha256: Sha,
+    // Legacy: ledgers written while external routing decisions existed carry a
+    // receipt here. Kept so those ledgers still read; binding refuses a set value.
     decision: z.unknown().optional(),
     thinkingOptionId: z.string().regex(/^[a-zA-Z0-9._-]+$/).nullable().optional(),
     selectionSha256: Sha.optional(),

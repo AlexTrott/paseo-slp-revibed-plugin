@@ -1,9 +1,9 @@
 ---
-name: paseo-slp-e2e
-description: Run or resume Paseo SLP live E2E dogfood from one coordinating session, for the requested scenarios or full suite, including fixture onboarding, evidence, independent review and cleanup. Use when asked to run E2E or dogfood this package; requires its source checkout.
+name: slp-revibed-e2e
+description: Run or resume SLP Revibed live E2E dogfood from one coordinating session, for the requested scenarios or full suite, including fixture onboarding, evidence, independent review and cleanup. Use when asked to run E2E or dogfood this package; requires its source checkout.
 ---
 
-# Run Paseo SLP E2E
+# Run SLP Revibed E2E
 
 The Human can say “run E2E package”. Own the whole run from this
 conversation through a consolidated report. Start each new scenario attempt with
@@ -19,7 +19,7 @@ instruction. A driving session never reveals an intermediate layer: no
 conductor rule binds this coordinating session; Supervisor/Lead/Peer
 exchanges inside the tree are unaffected.
 
-Locate the paseo-slp source checkout from the assignment/current workspace. Read
+Locate the slp-revibed source checkout from the assignment/current workspace. Read
 its AGENTS.md, docs/contract.md, docs/review-checklist.md and
 e2e/workspace-protocol.md. The source checkout is required because the suite tests
 the package and includes development fixtures; an installed runtime alone is not

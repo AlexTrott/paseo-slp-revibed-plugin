@@ -1,22 +1,16 @@
 // tests/routing-criteria.test.mjs — the routing-criteria contract
 // (docs/spec/routing-criteria.md): vocabulary integrity, §4 reading rules,
-// §6.2 overlaps, §7.2 reserved-id/token-conflict semantics, the §7.4
-// form/save/import flows and the Jev
-// guidance/receipt binding.
+// §6.2 overlaps, §7.2 reserved-id/token-conflict semantics and the §7.4
+// form/save/import flows.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { json, hash } from '../plugin/server/runtime/cli/package.ts';
-import { readCatalog, catalogBinding, validateCatalog, ROUTE_DECISION_QUESTION, ROUTE_DECLINE_CANDIDATE } from '../plugin/server/runtime/cli/routing.ts';
-import { routeDecide } from '../plugin/server/runtime/cli/jev-routing.ts';
-import { canonicalJson } from '../plugin/server/runtime/cli/jev.ts';
-import { fakeOrKey } from './fake-secrets.mjs';
+import { readCatalog, catalogBinding, validateCatalog } from '../plugin/server/runtime/cli/routing.ts';
 import {
   HOW_TO_READ,
-  JEV_SUITABILITY_GUIDANCE,
-  JEV_TOKEN_DEFINITIONS,
   ROUTING_VOCABULARY_VERSION,
   STANDARD_SEAT_IDS,
   STANDARD_SEAT_TOKENS,
@@ -64,24 +58,6 @@ const seat = (id, over = {}) => ({
   availability: 'ready', suitableFor: [], avoidFor: [], notes: 'n', ...over,
 });
 const pool = options => ({ version: 1, policy: 'Test pool.', quotaFallback: { enabled: false, optionId: null }, options });
-const jevHome = home => {
-  mkdirSync(join(home, 'slp-runtime', 'state'), { recursive: true });
-  writeFileSync(join(home, 'config.json'), json({ version: 1 }));
-  writeFileSync(join(home, 'slp-runtime', 'state', 'jev.json'), json({
-    schemaVersion: 1, enabled: true, capabilities: { routing: true },
-    provider: { kind: 'openrouter', model: 'typesafe/jev-1.13' },
-  }), { mode: 0o600 });
-  writeFileSync(join(home, 'slp-runtime', 'state', 'jev-openrouter.key'), fakeOrKey('synthetic-test-key-000') + '\n', { mode: 0o600 });
-  return home;
-};
-const okFetch = choice => async () => ({
-  ok: true,
-  json: async () => ({
-    id: 'gen-dec-mock', model: 'typesafe/jev-1.13-20260917', provider: 'TypeSafe',
-    answers: { [ROUTE_DECISION_QUESTION]: { type: 'choice', choice, confidence: 0.9, probabilities: { [choice]: 0.9 } } },
-    usage: { cost: 0.0001, input_tokens: 10, output_tokens: 5 },
-  }),
-});
 
 // ---------------------------------------------------------------------------
 // §2/§3 — the closed vocabulary is exactly the 16 axis:value tokens
@@ -312,62 +288,6 @@ test('readCatalog reports tokenConflicts; catalogBinding refuses a conflicted se
 });
 
 // ---------------------------------------------------------------------------
-// route-decide / prepare — conflicted seats are not Jev candidates, and a
-// receipt binds the vocabulary version it was issued under
-// ---------------------------------------------------------------------------
-
-test('route-decide excludes conflicted seats and records them on the receipt', async t => {
-  const { repo, home } = fixture(t);
-  const standard = STANDARD_SEAT_TOKENS['security-review'];
-  writeCatalog(repo, pool([
-    seat('security-review', { suitableFor: ['legacy-tag'], avoidFor: [] }),
-    seat('luna-code', { suitableFor: standard.suitableFor, avoidFor: standard.avoidFor }),
-    // A disabled seat is out of eligibility but its conflict still belongs on
-    // the read path's report (§7.2).
-    seat('deep-reasoning', { enabled: false, suitableFor: ['old-token'], avoidFor: [] }),
-  ]));
-  jevHome(home);
-  let body;
-  const result = await routeDecide({ repository: repo, brief: 'x' }, {
-    home,
-    fetchImpl: async (url, init) => { body = JSON.parse(init.body); return okFetch('luna-code')(url, init); },
-  });
-  assert.deepEqual(result.decision.context.candidates, ['luna-code']);
-  assert.deepEqual(result.tokenConflicts, ['security-review', 'deep-reasoning'],
-    'the receipt reports every catalog conflict, not only eligible ones');
-  assert.equal(result.decision.context.vocabularyVersion, ROUTING_VOCABULARY_VERSION);
-  assert.deepEqual(result.decision.context.tokenConflicts, ['security-review', 'deep-reasoning']);
-  // §1/§9 — the state carries the compact token glossary under the bound
-  // vocabulary version so bare axis:value strings are never unexplained.
-  assert.equal(body.state.vocabulary.version, ROUTING_VOCABULARY_VERSION);
-  assert.equal(body.state.vocabulary.tokens.length, 16);
-  assert.deepEqual(Object.keys(body.state.vocabulary.tokens[0]).sort(), ['axis', 'boundary', 'id', 'sign']);
-  assert.deepEqual(Object.keys(body.questions[ROUTE_DECISION_QUESTION].criteria), ['luna-code', ROUTE_DECLINE_CANDIDATE]);
-  // The receipt binds the pool to 'luna-code' — and a receipt re-signed
-  // under a different vocabulary version is refused at prepare.
-  const reSign = decision => { const { sha256: _s, ...unsigned } = decision; return { ...unsigned, sha256: hash(canonicalJson(unsigned)) }; };
-  const stale = reSign({ ...result.decision, context: { ...result.decision.context, vocabularyVersion: 'routing-criteria-v0' } });
-  assert.throws(
-    () => catalogBinding(repo, 'peer', providers, { optionId: 'luna-code', catalogSha256: result.catalogSha256, decision: stale }, home),
-    /vocabulary routing-criteria-v0.*now speaks routing-criteria-v1/s,
-  );
-  const bound = catalogBinding(repo, 'peer', providers, { optionId: 'luna-code', catalogSha256: result.catalogSha256, decision: result.decision }, home);
-  assert.equal(bound.routing.jev.decision, 'verified');
-});
-
-test('route-decide fails closed when every eligible seat is in conflict', async t => {
-  const { repo, home } = fixture(t);
-  writeCatalog(repo, pool([seat('security-review', { suitableFor: ['legacy-tag'], avoidFor: [] })]));
-  jevHome(home);
-  let fetched = false;
-  await assert.rejects(
-    routeDecide({ repository: repo, brief: 'x' }, { home, fetchImpl: async () => { fetched = true; return okFetch('security-review')(); } }),
-    error => error.code === 'jev-no-candidates' && /Token conflict/.test(error.message) && /security-review/.test(error.message),
-  );
-  assert.equal(fetched, false, 'conflict exclusion runs before any model call');
-});
-
-// ---------------------------------------------------------------------------
 // §7.4 — the form/save flows on the client helpers
 // ---------------------------------------------------------------------------
 
@@ -449,13 +369,9 @@ test('rename/convert keeps passthrough fields via the load-time storedId', () =>
   assert.equal(convertedBuild.pool.options[0].quotaNote, 'external metadata');
 });
 
-test('the decline sentinel is refused as a seat id at every gate', () => {
-  assert.match(customSeatIdError('no-suitable-option', []), /decline sentinel/);
-  const built = buildPeerPool({ ...emptyPeerPoolForm(), seats: [seatForm({ id: 'no-suitable-option' })] }, noDefs);
-  assert.ok('error' in built && /decline sentinel/.test(built.error));
-  // The stored-data validator refuses it too — a pool file carrying the
-  // sentinel must fail the same way the form does.
-  assert.throws(() => validateCatalog(pool([seat('no-suitable-option')])), /decline sentinel/);
+test('the former decline sentinel id is an ordinary custom seat id', () => {
+  assert.equal(customSeatIdError('no-suitable-option', []), null);
+  assert.doesNotThrow(() => validateCatalog(pool([seat('no-suitable-option')])));
 });
 
 test('suggestCustomSeatId always returns a valid non-reserved id', () => {
@@ -517,55 +433,4 @@ test('legacyImportAllowed requires legacy data, an absent pool and a truly untou
   assert.equal(legacyImportAllowed(null, form, false), false, 'read never succeeded');
   assert.equal(legacyImportAllowed({ legacy, pool: null }, { ...form, seats: [seatForm()] }, false), false, 'draft has seats');
   assert.equal(legacyImportAllowed({ legacy, pool: null }, form, true), false, 'policy/fallback edits count as dirty');
-});
-
-// ---------------------------------------------------------------------------
-// §9 — Jev guidance content and versioning
-// ---------------------------------------------------------------------------
-
-test('the Jev guidance states the vocabulary rules, not just the word list', () => {
-  assert.ok(JEV_SUITABILITY_GUIDANCE.includes(ROUTING_VOCABULARY_VERSION), 'guidance carries its version');
-  for (const phrase of [
-    'OR among values of the same axis',
-    'AND across the axes',
-    'full domain coverage is chosen before cost',
-    'advisory warning, not a ban',
-    'no-suitable-option',
-  ]) {
-    assert.ok(JEV_SUITABILITY_GUIDANCE.includes(phrase), `guidance states: ${phrase}`);
-  }
-  // §4 step 5 — the settled tie-break order, exactly: reliable cost metadata,
-  // then lighter thinking on same provider/model, then ascending option.id.
-  for (const phrase of [
-    'lowest expected execution cost from trustworthy metadata',
-    'lighter thinking option',
-    'smallest option id',
-    'never decline because of a tie',
-  ]) {
-    assert.ok(JEV_SUITABILITY_GUIDANCE.includes(phrase), `guidance states tie-break: ${phrase}`);
-  }
-  assert.ok(!JEV_SUITABILITY_GUIDANCE.includes('model size'), 'no unratified metadata in the tie-break');
-  // Wave 2 — the thinking surface is real data now: the guidance must explain
-  // what thinkingOptionId means, that all-null seats tie, and that an unclear
-  // provider order falls back to id. §7.1 — null must stay neutral: it covers
-  // both the provider-chosen default level and models with no thinking knob.
-  for (const phrase of [
-    'thinkingOptionId',
-    'provider default',
-    'provider\'s own default level',
-    'no separate thinking knob',
-    'all-null seats tie',
-    'thinking order is unclear',
-  ]) {
-    assert.ok(JEV_SUITABILITY_GUIDANCE.includes(phrase), `guidance explains the thinking surface: ${phrase}`);
-  }
-  // No price field was added — "no reliable price exists" remains a
-  // theoretical earlier tier only, not shipped metadata.
-  assert.ok(!JEV_SUITABILITY_GUIDANCE.includes('option.price'), 'no price field promised');
-  // §1/§9 — the glossary ships every standard token's packaged sign and
-  // boundary so a bare axis:value never reaches Jev unexplained.
-  assert.equal(JEV_TOKEN_DEFINITIONS.length, 16);
-  for (const def of JEV_TOKEN_DEFINITIONS) {
-    assert.ok(def.id.includes(':') && def.sign.length > 0 && def.boundary.length > 0, def.id);
-  }
 });

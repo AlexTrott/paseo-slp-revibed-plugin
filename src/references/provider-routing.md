@@ -9,7 +9,7 @@ dispositions imply no fixed model.
 slp_seat_create resolves slp-lead, refreshes providers, revalidates before
 create/delivery and observes the runtime. Supervisor child formation uses
 CLI compatibility; Supervisor can still form Lead through the desk.
-Saved profiles select neither Peer pools nor Jev.
+Saved profiles select no Peer pool.
 Use common policy's once-per-session route verification. If PASEO_AGENT_ID is
 unavailable, slp_status({}) supplies identity/workspace for one bounded host lookup;
 record missing parent/report metadata as a gap.
@@ -27,23 +27,19 @@ availability. Preparation/host create are not atomic.
 ## Peer pool
 
 Start with runtime/selection omitted for ordinary/Lean slp_seat_create; consume
-its result via delegation-execution.md. Runtime discovery and Jev decisions
-belong to that server operation. Full runtime pins select compatibility and
-must include required receipts. A linked caller without local routing/protocol
+its result via delegation-execution.md. Runtime discovery belongs to that
+server operation. Full runtime pins select compatibility. A linked caller without local routing/protocol
 inherits its configured same-Git main checkout; no trustworthy source means
 gap, not silent user fallback. Repository catalogs win even when empty;
 otherwise only Manager's user pool is fallback. Preserve routing_intent;
 report poolDrift/warnings for Human reconciliation, never auto-merge.
 
-Armed Jev selects through a retained decision; error blocks the branch.
-Shadow requires independent Lead selection even for one option; errors block.
-V1 Off/unconfigured selects a sole eligible option; several options return
+The Lead selects. V1 selects a sole eligible option; several options return
 choices for selection.optionId. V1 settings/token semantics remain until Human
-conversion. Read references/jev-routing.md for shadow/armed/error, skipping unconfigured/off.
-Old optionId/catalogSha256/decision pins remain supported; armed decline/config/key/network
-failure blocks without default substitution. The runtime resolves the complete bundle
+conversion. optionId/catalogSha256 pins remain supported; a decision pin is
+refused. The runtime resolves the complete bundle
 against fresh host providers before effects; eligibility proves no suitability/quota.
-Catalog hash, eligibility and Jev receipts must also be fresh.
+Catalog hash and eligibility must also be fresh.
 
 V2: follow returned pool policy/selectionGuidance and every preset's
 description/hints. Choose smallest sufficient capability and effort; record
@@ -53,16 +49,14 @@ Choose selection.optionId; ambiguous options need selection.thinkingOptionId (nu
 For cross-provider name routingRequirements.referenceAgentId; add crossProvider:true
 for an assignment-wide requirement. Runtime families differ (Devin to Codex);
 missing reference is a gap. Preserve rules/effort limits and compatibility
-selectionSha256/routingContext. Shadow compares independent pairs; Armed pins
-Jev's pair. Relay routingSelection and receipt owner/requestId to Supervisor/Human;
-only the issuing Lead reads slp_operation_get. Jev probabilities are evidence,
-not a reported prose rationale. No effort overlay, retry ladder or extra budget.
+selectionSha256/routingContext. Relay routingSelection and receipt owner/requestId to Supervisor/Human;
+only the issuing Lead reads slp_operation_get. No effort overlay, retry ladder or extra budget.
 
 ## Explicit dispatch and compatibility
 
-Task dispatch needs pool/Jev pins. CLI compatibility uses slp.mjs routes
+Task dispatch needs pool pins. CLI compatibility uses slp.mjs routes
 <absolute-repository> --paseo-home <home>, live list_providers and Peer pins
-in prepare --emit create; prepare never calls Jev. V2 route-choices <request.json|-> discovers pairs offline with fresh model
+in prepare --emit create; prepare stays offline. V2 route-choices <request.json|-> discovers pairs offline with fresh model
 capability observations. Preserve complete settings/exact IDs including slashes;
 never inherit effort/features or bypass routing with bindings.
 

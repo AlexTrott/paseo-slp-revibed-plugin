@@ -16,13 +16,13 @@ read-only and does not verify or select a runtime for execution.
 | `prepare --schema`, `prepare-handoff --schema` | No | Yes |
 | `monitor`, `record-build` (including `--schema`) | No | Yes |
 | `identity`, `snapshot`, `review-packet`, `records`, `verify-handback` | No | Yes |
-| `routes`, `route-decide` (including `--schema`), `inventory`, `agents`, `notebook`, `status`, `local-target` | No | Yes; relevant daemon files/configuration are still needed |
+| `routes`, `route-choices` (including `--schema`), `inventory`, `agents`, `notebook`, `status`, `local-target` | No | Yes; relevant daemon files/configuration are still needed |
 | `instructions` | No for a source preview | Yes; a managed render needs its binding environment |
 | `init`, `materialize`, `install` | No | Yes |
 | `upgrade`, `uninstall`, `verify` | No for the invoking CLI | Yes; the previous/target directory must be installed |
 | `desk-recover` | No | Yes; targets the selected home's desk state |
 
-`prepare`, `prepare-handoff`, `route-decide`, `monitor` and `record-build`
+`prepare`, `prepare-handoff`, `route-choices`, `monitor` and `record-build`
 accept `-` instead of a request filename to parse JSON from stdin. `records`
 also reads report text from `-`.
 The parser accepts `-` as a positional target for every command; only these readers interpret it as stdin.
@@ -121,8 +121,7 @@ Three more optional fields, all also honored by
   and normalized byte count), sentinels and the normalized inline text. Any
   validation or read error fails prepare; it never falls back to pointer mode.
   `prepare-handoff` uses the same behavior. The daemon never reads this file;
-  the snapshot is the brief text it already receives and may assess under the
-  existing supervision route. Snapshotting puts that bounded text in the
+  the snapshot is the brief text it already receives. Snapshotting puts that bounded text in the
   launch prompt and host timeline, so the Lead must choose an appropriate file;
   the pattern-based credential guard does not identify ordinary passwords.
 
@@ -211,12 +210,10 @@ A complete request carries: `taskLabel` (or the repo name is used), the role
 an `assignment` naming scope, authority, the report-recipient agent ID and
 the verification/handback expectations, plus one binding source. For longer
 briefs use `assignmentFile` — a separate file per seat. Pointer mode keeps the
-read-first reference; when supervision needs an observable brief, the Lead may
+read-first reference; when the brief should be observable in the timeline, the Lead may
 explicitly select `assignmentFileMode: "snapshot"` to inline its validated,
 bounded content. Before any create_agent call, Lead records why the chosen
-topology (which seats, which pool options) fits the assignment — under armed
-Jev routing that reason trail is the decision receipt's distribution, not
-prose.
+topology (which seats, which pool options) fits the assignment.
 
 ## Bound seat formation
 
@@ -225,10 +222,10 @@ formation with runtime and selection omitted; server-side selection is described
 in [operations](operations.md#ordinary-peer-formation-through-the-desk).
 If choices are returned, supply `selection: {optionId}` for an independent pick.
 Explicit runtime is the compatibility path and requires already-complete
-pool/Jev pins; it does not ask the server to fill missing receipts.
+pool pins; the server fills nothing in.
 The spawn kit exposes both optional arguments, which are mutually exclusive. A choice response
-is unadmitted, not a successful create. After admission exact replay never calls
-Jev or resumes effects. `prepare`/`--check`/handoff preparation remain offline
+is unadmitted, not a successful create. After admission exact replay never
+reselects or resumes effects. `prepare`/`--check`/handoff preparation remain offline
 and still require explicit Peer pool pins; the new selector is not run by them.
 
 Placement is a desk argument, not a CLI repository/catalog override. Both
@@ -240,32 +237,6 @@ trusted context or route.catalogFile. New worktree: use Paseo create_workspace
 under its host-setup grant, then slp_seat_create placement existing; the desk's
 kind=worktree branch returns a gap before effects. Pending keeps the child ID
 and evidence without runnable delivery; replay never repairs or recreates it.
-
-## `route-decide`
-
-`route-decide <request.json> [--schema] [--out <path>] [--paseo-home <absolute-home>]`
-is the explicit CLI compatibility/routing path, separate from ordinary desk formation,
-that calls routing Jev (the admitted slp_seat_create executor also invokes it) — see [Jev-assisted routing](operations.md#jev-assisted-routing-optional)
-for what it is and when it applies. The request carries `repository`, an
-optional `role` (default `peer`) and a Lead-authored `brief` — a nonempty
-string of raw task/assignment text and the only task context Jev sees;
-carry the task description, risk/effort signals, constraints and
-dependencies — a starved brief drifts toward chance-level answers.
-Structured forms are refused (`jev-request-invalid`): a `signals` field or
-object/array let the caller pre-classify the task with Jev's own decision
-vocabulary — inline the facts as prose instead. Standard `axis:value`
-tokens quoted inside the text are flagged as unverified mentions in the
-output `warnings`. Output is `{schemaVersion, optionId,
-catalogSha256, declined, role, tokenConflicts, warnings, poolDrift, decision}`;
-`poolDrift` plus a `warnings` line report any divergence between the
-repository catalog and the live user-scope pool (advisory — the catalog
-still binds, nothing is reconciled). Feed `optionId`/`catalogSha256`/
-`decision` into `route.*` of a `prepare` request. A `no-suitable-option`
-answer still prints its receipt but exits 1. The command fails closed before
-any network when the daemon's Jev config or key is missing/disabled, and a
-source checkout invocation needs a daemon home carrying that config (`--paseo-home`
-or `PASEO_HOME`). `--schema` prints the request contract without a request
-file or daemon; `--out` persists the response bytes, never the request.
 
 ## `routes`
 
@@ -286,11 +257,7 @@ and `tokenConflicts` — feed an option's `id` and the `catalogSha256` into
 a `prepare` request's `route.*`. When the repository catalog wins while a
 live user pool exists, `userPool` plus an advisory `poolDrift` report
 evidence the two sources disagreeing (nothing is reconciled).
-`jevRouting` reports the daemon's Jev routing mode for the resolved home —
-`unconfigured`, `off`, `shadow`, `armed`, or `error` for a
-configured-but-unreadable config — so a Lead sees whether a
-`route-decide` receipt would bind, merely record, or be unavailable
-before planning a delegation. `--out` writes the response bytes to a
+`--out` writes the response bytes to a
 file, never the request.
 
 ## `inventory` / `agents`

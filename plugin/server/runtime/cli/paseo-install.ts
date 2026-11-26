@@ -85,9 +85,9 @@ function readPaseoBinding(destination: string): PaseoBinding {
 // Platform data dir: %LOCALAPPDATA% on Windows, ~/Library/Application Support
 // on macOS, $XDG_DATA_HOME (~/.local/share) elsewhere.
 export function installHome(platform = process.platform, env = process.env, home = homedir()) {
-  if (platform === 'win32') return join(env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), 'paseo-slp');
-  if (platform === 'darwin') return join(home, 'Library', 'Application Support', 'paseo-slp');
-  return join(env.XDG_DATA_HOME ?? join(home, '.local', 'share'), 'paseo-slp');
+  if (platform === 'win32') return join(env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), 'slp-revibed');
+  if (platform === 'darwin') return join(home, 'Library', 'Application Support', 'slp-revibed');
+  return join(env.XDG_DATA_HOME ?? join(home, '.local', 'share'), 'slp-revibed');
 }
 
 // Default saved-profile family follows the host's enabled base provider; every

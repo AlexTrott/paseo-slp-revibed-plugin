@@ -225,18 +225,18 @@ test('Peer formation accepts optional runtime or independent selection without r
 
 test('automatic Peer selection occurs only in one admitted executor and stays fixed across all replans', async t => {
   const f = fixture(t); let selectedCalls = 0, plans = 0;
-  const selected = { route: { optionId: 'pool', catalogSha256: 'a'.repeat(64) }, mode: 'armed',
-    modeSha256: 'b'.repeat(64), origin: 'jev', source: { repository: f.root, catalogFile: '/pool', scope: 'repository' }, decisionResult: { decision: { full: true } } };
+  const selected = { route: { optionId: 'pool', catalogSha256: 'a'.repeat(64) },
+    origin: 'unique', source: { repository: f.root, catalogFile: '/pool', scope: 'repository' } };
   f.deps.preflightPeer = async () => null;
   f.deps.selectPeer = async (_row, _input, phase) => {
     assert.equal(readdirSync(join(f.stableRoot, 'state/operations')).length, 1);
-    selectedCalls++; phase('route-issued', { mode: 'armed' }); return selected;
+    selectedCalls++; phase('route-noted', { retained: true }); return selected;
   };
   f.deps.plan = async (_row, _input, context) => { plans++; assert.deepEqual(context.selected, selected); return f.plan; };
   const input = { ...f.input, role: 'peer' };
   const out = await f.run(input);
   assert.equal(out.result.state, 'awaiting-caller-delivery'); assert.equal(plans, 3); assert.equal(selectedCalls, 1);
-  assert.deepEqual(out.phases.map(p => p.name), ['route-issued', 'route-selected', 'prepared', 'create-issued', 'create-returned', 'create-observed', 'delivery-handed-off']);
+  assert.deepEqual(out.phases.map(p => p.name), ['route-noted', 'route-selected', 'prepared', 'create-issued', 'create-returned', 'create-observed', 'delivery-handed-off']);
   assert.deepEqual(out.phases[1].value, selected);
   let replayPreflights = 0, replayDecisions = 0;
   f.deps.preflightPeer = async () => { replayPreflights++; return null; };
@@ -262,10 +262,9 @@ test('explicit legacy Peer runtime preserves five phases and invokes no selectio
 
 import { selectionFixture } from './helpers/seat-selection-fixture.mjs';
 import { pathToFileURL } from 'node:url';
-import { routeDecide } from '../plugin/server/runtime/cli/jev-routing.ts';
 
-async function realPeerFixture(t, mode, count = 2, family = 'codex', providerWarmup) {
- const f=selectionFixture(t,{mode,count});
+async function realPeerFixture(t, count = 2, family = 'codex', providerWarmup) {
+ const f=selectionFixture(t,{count});
  if(family==='opencode'){
   for(const option of f.options)Object.assign(option,{provider:'opencode',model:'provider/nested/model',modeId:'build'});
   f.savePool();
@@ -273,7 +272,7 @@ async function realPeerFixture(t, mode, count = 2, family = 'codex', providerWar
  execFileSync('git',['init','-q',f.repository]);
  const candidate=join(f.dir,'candidate');install(fileURLToPath(new URL('..',import.meta.url)),candidate);
  const row=memberRow('peer-parent',{}, {agentId:'parent',role:'lead',createCwd:f.repository,workspaceId:'workspace'});
- const effects=[];let snapshot,decisions=0;
+ const effects=[];let snapshot;
  const create=async options=>{
   effects.push({kind:'create',options});
   const split=options.config.provider.indexOf('/');
@@ -291,10 +290,7 @@ async function realPeerFixture(t, mode, count = 2, family = 'codex', providerWar
  const planner=createFormationPlanner({runtimePath:candidate,daemonHome:f.home,host:()=>host,...(providerWarmup?{providerWarmup}:{}),
   importModule:async spec=>{
    loaded.push(spec);assert.equal(spec,pathToFileURL(join(candidate,'plugin/server/runtime/cli/launch.ts')).href);
-   const launch=await import(spec);
-   return {...launch,selectPeerSeat:(req,deps)=>launch.selectPeerSeat(req,{...deps,decide:async request=>{
-    decisions++;return routeDecide(request,{fetchImpl:f.fetchImpl});
-   }})};
+   return import(spec);
   }});
  const deps={stableRoot:join(f.home,'slp-runtime'),repoKey:'repo',host:()=>host,plan:planner,
   preflightPeer:planner.preflightPeer,selectPeer:planner.selectPeer,guard:async()=>null,
@@ -302,12 +298,12 @@ async function realPeerFixture(t, mode, count = 2, family = 'codex', providerWar
   readMemberships:()=>snapshot?[memberRow('peer-child',{provider:snapshot.provider,at:'2026-01-01T00:00:00.000Z'},
     {agentId:'child',role:'peer',createCwd:snapshot.cwd,workspaceId:snapshot.workspaceId})]:[]};
  const input={requestId:'matrix',role:'peer',taskLabel:'bounded',assignment:f.request.assignment,grantRef:'human:fixture'};
- return {...f,row,candidate,host,effects,loaded,planner,formationDeps:deps,input,decisions:()=>decisions,
+ return {...f,row,candidate,host,effects,loaded,planner,formationDeps:deps,input,
   run:request=>runSeatCreate(row,request??input,deps)};
 }
 
 for(const shape of ['automatic','selection','runtime'])test('production OpenCode ACP formation '+shape+' obtains live transport and preserves replay',async t=>{
- const f=await realPeerFixture(t,'off',1,'opencode');
+ const f=await realPeerFixture(t,1,'opencode');
  const input={...f.input,...(shape==='selection'?{selection:{optionId:'first'}}:shape==='runtime'?{runtime:{optionId:'first',catalogSha256:f.sha()}}:{})};
  const out=await f.run(input);
  assert.equal(out.result.state,'awaiting-caller-delivery',JSON.stringify(out));
@@ -332,7 +328,7 @@ test('production OpenCode saved Lead planning obtains the same live ACP evidence
 });
 
 for(const transport of ['opencode','missing','wrong-id','unavailable-api','read-failure','drift'])test('production OpenCode transport '+transport+' refuses before create without alias inference',async t=>{
- const f=await realPeerFixture(t,'off',1,'opencode');let reads=0;
+ const f=await realPeerFixture(t,1,'opencode');let reads=0;
  f.host.config.get=async()=>{
   reads++;if(transport==='read-failure')throw new Error('private config error must not escape');
   return {config:{providers:transport==='missing'?{}:{[transport==='wrong-id'?'slp-opencode-lead':'slp-opencode-peer']:{extends:transport==='opencode'||transport==='drift'&&reads>1?'opencode':'acp'}}}};
@@ -343,14 +339,14 @@ for(const transport of ['opencode','missing','wrong-id','unavailable-api','read-
 });
 
 test('published OpenCode ACP snapshot evidence is preserved without a config-read dependency',async t=>{
- const f=await realPeerFixture(t,'off',1,'opencode');delete f.host.config;
+ const f=await realPeerFixture(t,1,'opencode');delete f.host.config;
  const snapshot=f.host.providers.snapshot;
  f.host.providers.snapshot=async(...args)=>{const out=await snapshot(...args);out.entries[0].extends='acp';return out;};
  const out=await f.run();assert.equal(out.result.state,'awaiting-caller-delivery',JSON.stringify(out));
 });
 
 test('OpenCode transport changes after child creation retain identity and withhold delivery',async t=>{
- const f=await realPeerFixture(t,'off',1,'opencode'),ref=f.host.workspaces.ref;
+ const f=await realPeerFixture(t,1,'opencode'),ref=f.host.workspaces.ref;
  f.host.workspaces.ref=id=>{const handle=ref(id);return {...handle,agents:{create:async options=>{
   const child=await handle.agents.create(options);
   f.host.config.get=async()=>({config:{providers:{'slp-opencode-peer':{extends:'opencode'}}}});
@@ -360,95 +356,53 @@ test('OpenCode transport changes after child creation retain identity and withho
  assert.equal(out.result.agentId,'child');assert.equal(f.effects.length,1);assert.equal(Object.hasOwn(out.result,'delivery'),false);
 });
 
-for(const mode of ['unconfigured','off','shadow','armed','error']){
- for(const shape of ['runtime','selection','none']){
-  test('matrix '+mode+' × '+shape+' preserves choice, phase count and replay',async t=>{
-   // Generate any old receipt before corrupting Jev config; explicit path never calls new selector.
-   const f=await realPeerFixture(t,mode==='error'?'off':mode);
-   let runtime={optionId:'first',catalogSha256:f.sha()};
-   if(mode==='armed'||mode==='shadow'){
-    f.setChoice('first');const prior=await f.decide({repository:f.repository,paseoHome:f.home,brief:f.request.assignment});runtime.decision=prior.decision;
-   }
-   if(mode==='error')f.configure('error');
-   const before=f.calls.fetch;
-   const req={...f.input,...(shape==='runtime'?{runtime}:shape==='selection'?{selection:{optionId:'first'}}:{})};
-   const out=await f.run(req);
-   if(mode==='error'){
-    assert.equal(out.ok===false||out.result?.ok===false,true,JSON.stringify(out));assert.equal(f.effects.length,0);
-   }else if(shape==='none' && mode!=='armed'){
-    assert.equal(out.state,'selection-required');assert.equal(out.operationAdmitted,false);assert.equal(f.effects.length,0);
-    assert.equal(readdirSync(join(f.home,'slp-runtime','state')).includes('operations'),false);
-    const chosen=await f.run({...req,selection:{optionId:'first'}});
-    assert.equal(chosen.result.state,'awaiting-caller-delivery');
-   }else{
-    assert.equal(out.result.state,'awaiting-caller-delivery',JSON.stringify(out));
-    const expected=shape==='runtime'?5:mode==='armed'||mode==='shadow'?7:6;
-    assert.equal(out.phases.length,expected);assert.equal(out.phases.length<=16,true);
-    assert.equal(out.phases.some(p=>p.name==='route-selected'),shape!=='runtime');
-    assert.equal(f.decisions(),shape==='runtime'?0:mode==='armed'||mode==='shadow'?1:0);
-    const after=f.calls.fetch;
-    f.configure('error');f.formationDeps.preflightPeer=async()=>assert.fail('replay preflight');
-    f.formationDeps.selectPeer=async()=>assert.fail('replay decision');
-    const replay=await f.run(req);
-    assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.calls.fetch,after);assert.equal(f.effects.length,1);
-   }
-   if(shape==='runtime')assert.equal(f.calls.fetch,before);
-  });
- }
-}
-for(const failure of ['network','timeout','schema','missing-key','decline']){
- test('admitted armed '+failure+' records refusal, creates nothing and replays without Jev',async t=>{
-  const f=await realPeerFixture(t,'armed',1);f.setFailure(failure);
-  if(failure==='missing-key')rmSync(f.keyPath);
-  if(failure==='decline')f.setChoice('no-suitable-option');
-  const out=await f.run();assert.equal(out.state,'recorded');assert.equal(out.result.ok,false);
-  assert.equal(out.phases.length,failure==='decline'?2:1);assert.equal(out.phases[0].name,'route-issued');assert.equal(f.effects.length,0);
-  if(failure==='decline'){
-   assert.equal(out.phases[1].value.decision.answers.route_option.choice,'no-suitable-option');
-   assert.match(out.result.message,/Jev declined Peer routing/);
-   assert.match(out.result.recovery,/Escalate the Human-owned pool decision; do not retry/);
+for(const shape of ['runtime','selection','none']){
+ test('matrix '+shape+' preserves choice, phase count and replay',async t=>{
+  const f=await realPeerFixture(t);
+  const runtime={optionId:'first',catalogSha256:f.sha()};
+  const req={...f.input,...(shape==='runtime'?{runtime}:shape==='selection'?{selection:{optionId:'first'}}:{})};
+  const out=await f.run(req);
+  if(shape==='none'){
+   assert.equal(out.state,'selection-required');assert.equal(out.operationAdmitted,false);assert.equal(f.effects.length,0);
+   assert.equal(readdirSync(join(f.home,'slp-runtime','state')).includes('operations'),false);
+   const chosen=await f.run({...req,selection:{optionId:'first'}});
+   assert.equal(chosen.result.state,'awaiting-caller-delivery');
+  }else{
+   assert.equal(out.result.state,'awaiting-caller-delivery',JSON.stringify(out));
+   assert.equal(out.phases.length,shape==='runtime'?5:6);
+   assert.equal(out.phases.some(p=>p.name==='route-selected'),shape!=='runtime');
+   f.formationDeps.preflightPeer=async()=>assert.fail('replay preflight');
+   f.formationDeps.selectPeer=async()=>assert.fail('replay selection');
+   const replay=await f.run(req);
+   assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.effects.length,1);
   }
-  const before=f.calls.fetch;await f.run();assert.equal(f.calls.fetch,before);assert.equal(f.effects.length,0);
  });
 }
-test('armed selection mismatch preserves the actual cause and never silently drops an assigned pick',async t=>{
- const f=await realPeerFixture(t,'armed');f.setChoice('second');
- const req={...f.input,selection:{optionId:'first'}},out=await f.run(req);
- assert.equal(out.result.code,'ROUTE_DRIFT');
- assert.match(out.result.message,/independent selection differs from the armed Jev decision/);
- assert.match(out.result.recovery,/Do not silently discard an assigned selection/);
- assert.deepEqual(out.phases.map(phase=>phase.name),['route-issued','route-mismatch']);
- const retained=out.phases[1].value;
- assert.deepEqual(retained.selection,req.selection);
- assert.equal(retained.optionId,'second');assert.equal(retained.mode,'armed');
- assert.equal(retained.decision.answers.route_option.choice,'second');
- assert.equal(retained.catalogSha256,f.sha());
- assert.equal(f.effects.length,0);assert.equal(f.decisions(),1);
- const replay=await f.run(req);
- assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.decisions(),1);
- assert.deepEqual(replay.phases,out.phases);
- assert.equal(f.effects.length,0);
+test('a runtime pin carrying a routing decision is refused before any effect',async t=>{
+ const f=await realPeerFixture(t);
+ const out=await f.run({...f.input,runtime:{optionId:'first',catalogSha256:f.sha(),decision:{kind:'legacy-receipt'}}});
+ assert.equal(out.ok===false||out.result?.ok===false,true,JSON.stringify(out));assert.equal(f.effects.length,0);
 });
 
-test('caller and server delivery have the same worst-case seven phase budget',async t=>{
- const f=await realPeerFixture(t,'armed');
+test('caller and server delivery have the same worst-case six phase budget',async t=>{
+ const f=await realPeerFixture(t,1);
  const out=await f.run({...f.input,delivery:'server'});
- assert.equal(out.result.state,'host-accepted');assert.equal(out.phases.length,7);
- assert.equal(out.phases.at(-1).name,'send-issued');assert.equal(f.decisions(),1);
+ assert.equal(out.result.state,'host-accepted');assert.equal(out.phases.length,6);
+ assert.equal(out.phases.at(-1).name,'send-issued');
  assert.deepEqual(f.effects.map(e=>e.kind),['create','send']);
 });
 test('pending route-issued and route-selected histories never resume selection or reseal intent',async t=>{
  for(const last of ['route-issued','route-selected']){
-  const f=await realPeerFixture(t,'armed');
+  const f=await realPeerFixture(t,1);
   const identity={repoKey:'repo',membershipId:f.row.membershipId,agentId:'parent',kind:'seat-create',requestId:f.input.requestId};
   const ops=createDeskOperations(f.formationDeps.stableRoot);
   await ops.run(identity,f.input,async phase=>{phase(last,{retained:true});throw new Error('process interrupted');});
   const out=await f.run();assert.equal(out.state,'partial');assert.equal(out.phases[0].name,last);
-  assert.equal(f.decisions(),0);assert.equal(f.effects.length,0);
+  assert.equal(f.effects.length,0);
  }
 });
 test('missing bound candidate selector fails automatically but preserves explicit-runtime compatibility',async t=>{
- const f=await realPeerFixture(t,'off',1);
+ const f=await realPeerFixture(t,1);
  const old=createFormationPlanner({runtimePath:f.candidate,daemonHome:f.home,host:()=>f.host,
   importModule:async spec=>{const {launchPlan}=await import(spec);return {launchPlan};}});
  f.formationDeps.plan=old;f.formationDeps.preflightPeer=old.preflightPeer;f.formationDeps.selectPeer=old.selectPeer;
@@ -469,7 +423,7 @@ test('new Manager Lead formation preserves the v1 launch provider ABI with a fre
 });
 
 test('new Manager automatic v1 Peer selection and revalidation preserve the legacy provider ABI',async t=>{
- const f=await realPeerFixture(t,'off',1);
+ const f=await realPeerFixture(t,1);
  f.host.providers.snapshot=async()=>({entries:[{provider:'slp-codex-peer',enabled:true,status:'ready',modes:[{id:'full-access'}],models:[{id:'model/variant'}]}]});
  const legacy=createFormationPlanner({runtimePath:f.candidate,daemonHome:f.home,host:()=>f.host,
   importModule:async spec=>{const module=await import(spec);
@@ -477,50 +431,12 @@ test('new Manager automatic v1 Peer selection and revalidation preserve the lega
    return {...module,FORMATION_CAPABILITIES:{existingPlacement:1},
     launchPlan:(root,request,...rest)=>{verify(request.providers);return module.launchPlan(root,request,...rest);},
     preflightPeerChoice:(request,providers)=>{verify(providers);return module.preflightPeerChoice(request,providers);},
-    selectPeerSeat:(request,deps)=>{verify(deps.providers);return module.selectPeerSeat(request,{...deps,decide:f.decide});},
+    selectPeerSeat:(request,deps)=>{verify(deps.providers);return module.selectPeerSeat(request,deps);},
     revalidatePeerSelection:(request,selected,providers)=>{verify(providers);return module.revalidatePeerSelection(request,selected,providers);}};
   }});
  Object.assign(f.formationDeps,{plan:legacy,preflightPeer:legacy.preflightPeer,selectPeer:legacy.selectPeer});
  const out=await f.run();assert.equal(out.result.state,'awaiting-caller-delivery',JSON.stringify(out));
  assert.equal(f.effects.filter(e=>e.kind==='create').length,1);
-});
-
-test('armed explicit runtime without decision gives ordinary recovery without creating or re-deciding',async t=>{
- const f=await realPeerFixture(t,'armed');
- const req={...f.input,runtime:{optionId:'first',catalogSha256:f.sha()}};
- const out=await f.run(req);
- assert.equal(out.result.code,'INVALID_RECORD');
- assert.match(out.result.message,/explicit Peer runtime lacks the decision receipt/);
- assert.match(out.result.recovery,/omit runtime for ordinary server selection/);
- assert.match(out.result.recovery,/new requestId/);
- assert.equal(out.phases.some(p=>p.name==='create-issued'||p.name==='send-issued'),false);
- assert.equal(f.effects.length,0);assert.equal(f.decisions(),0);assert.equal(f.calls.fetch,0);
- const replay=await f.run(req);
- assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.decisions(),0);
- assert.equal((await f.run({...f.input})).code,'IDEMPOTENCY_CONFLICT');
- f.setChoice('first');
- const corrected=await f.run({...f.input,requestId:'corrected-automatic'});
- assert.equal(corrected.result.state,'awaiting-caller-delivery');
- assert.equal(f.decisions(),1);assert.deepEqual(f.effects.map(p=>p.kind),['create']);
-});
-
-test('missing decision after a full-pin child create keeps its ID and warns against recreation',async t=>{
- const f=await realPeerFixture(t,'off',1), original=f.host.workspaces.ref;
- f.host.workspaces.ref=id=>{
-  const ref=original(id);
-  return {...ref,agents:{create:async options=>{
-   const child=await ref.agents.create(options);f.configure('armed');return child;
-  }}};
- };
- const req={...f.input,runtime:{optionId:'first',catalogSha256:f.sha()}};
- const out=await f.run(req);
- assert.equal(out.result.code,'INVALID_RECORD');assert.equal(out.result.agentId,'child');
- assert.match(out.result.recovery,/retain agent\/request IDs and reconcile resources without recreation/);
- assert.deepEqual(f.effects.map(p=>p.kind),['create']);assert.equal(f.decisions(),0);
- assert.equal(out.phases.some(p=>p.name==='create-issued'),true);
- assert.equal(out.phases.some(p=>p.name==='delivery-handed-off'||p.name==='send-issued'),false);
- assert.equal((await f.run(req)).receiptSha256,out.receiptSha256);
- assert.deepEqual(f.effects.map(p=>p.kind),['create']);
 });
 
 test('unclassified launch errors stay redacted instead of becoming recovery instructions',async t=>{
@@ -536,43 +452,42 @@ test('unclassified launch errors stay redacted instead of becoming recovery inst
 });
 
 test('automatic provider unavailability blocks without silently selecting another option',async t=>{
- const f=await realPeerFixture(t,'off',1);
+ const f=await realPeerFixture(t,1);
  f.host.providers.snapshot=async()=>({entries:[{provider:'slp-codex-peer',enabled:true,status:'unavailable',modes:[{id:'full-access'}]}]});
  const out=await f.run();assert.equal(out.result.ok,false);assert.equal(f.effects.length,0);
 });
 
-test('automatic decision checks caller authority again after awaited provider observation',async t=>{
- const f=await realPeerFixture(t,'armed');let reads=0;
+test('automatic selection checks caller authority again after awaited provider observation',async t=>{
+ const f=await realPeerFixture(t,1);let reads=0;
  const original=f.host.providers.snapshot;
  f.host.providers.snapshot=async()=>{reads++;return original();};
  f.formationDeps.guard=async()=>reads?{ok:false,code:'STALE_EPOCH',message:'revoked',recovery:'stop'}:null;
- const out=await f.run();assert.equal(out.result.code,'STALE_EPOCH');assert.equal(f.decisions(),0);assert.equal(f.effects.length,0);
+ const out=await f.run();assert.equal(out.result.code,'STALE_EPOCH');assert.equal(f.effects.length,0);
 });
 for(const leg of ['before-create','before-delivery']){
- test('fixed automatic pool pin blocks '+leg+' drift without re-deciding',async t=>{
-  const f=await realPeerFixture(t,'armed');let observations=0;const original=f.host.providers.snapshot;
+ test('fixed automatic pool pin blocks '+leg+' drift',async t=>{
+  const f=await realPeerFixture(t,1);let observations=0;const original=f.host.providers.snapshot;
   f.host.providers.snapshot=async()=>{observations++;if(observations===(leg==='before-create'?3:4)){f.options[0].notes='changed';f.savePool();}return original();};
-  const out=await f.run();assert.equal(out.result.code,'ROUTE_DRIFT');assert.equal(f.decisions(),1);
+  const out=await f.run();assert.equal(out.result.code,'ROUTE_DRIFT');
   assert.equal(f.effects.length,leg==='before-create'?0:1);
   assert.equal(out.phases.some(p=>p.name==='delivery-handed-off'),false);
  });
 }
-test('offline prepare and check cannot invoke the automatic selector or network',async t=>{
- const f=await realPeerFixture(t,'armed');const out=await f.run();
+test('offline prepare and check accept the recorded selection without network',async t=>{
+ const f=await realPeerFixture(t,1);const out=await f.run();
  const selected=out.phases.find(p=>p.name==='route-selected').value;
  const module=await import(pathToFileURL(join(f.candidate,'plugin/server/runtime/cli/launch.ts')).href);
  let networkCalls=0;
  const old=globalThis.fetch;globalThis.fetch=async()=>{networkCalls++;throw new Error('prepare network');};t.after(()=>{globalThis.fetch=old;});
  const request={repository:f.repository,workspaceId:'workspace',role:'peer',assignment:f.request.assignment,
   providers:f.providers,route:selected.route,paseoHome:f.home};
- assert.equal(module.launchPlan(f.candidate,request).routing.optionId,'second');
+ assert.equal(module.launchPlan(f.candidate,request).routing.optionId,'first');
  assert.equal(module.launchCheck(f.candidate,request).ok,true);
  assert.equal(networkCalls,0);
- assert.equal(f.decisions(),1);
 });
 test('automatic formation refuses oversized retained prompt evidence before native allocation',async t=>{
  const f=fixture(t);const selected={route:{optionId:'x',catalogSha256:'a'.repeat(64)},source:{repository:f.root,catalogFile:'/pool',scope:'repository'},
-  mode:'off',modeSha256:'b'.repeat(64),origin:'unique'};
+  origin:'unique'};
  f.deps.preflightPeer=async()=>null;f.deps.selectPeer=async()=>selected;
  f.plan.create.initialPrompt='x'.repeat(100000);
  const out=await f.run({...f.input,role:'peer'});assert.equal(out.result.code,'REQUEST_TOO_LARGE');assert.equal(f.effects.length,0);
@@ -580,32 +495,32 @@ test('automatic formation refuses oversized retained prompt evidence before nati
 });
 
 for(const character of ['界','\0']){
- test('oversized automatic assignment '+JSON.stringify(character)+' preserves requestId before armed decision/admission',async t=>{
-  const f=await realPeerFixture(t,'armed');
+ test('oversized automatic assignment '+JSON.stringify(character)+' preserves requestId before admission',async t=>{
+  const f=await realPeerFixture(t,1);
   const oversized=DeskSeatCreateInput.parse({...f.input,assignment:character.repeat(WIRE_LIMITS.deskTaskText)});
   const out=await f.run(oversized);
-  assert.equal(f.decisions(),0);assert.equal(f.calls.fetch,0);assert.equal(f.effects.length,0);
+  assert.equal(f.effects.length,0);
   assert.equal(out.code,'REQUEST_TOO_LARGE');
   assert.equal(readdirSync(join(f.home,'slp-runtime/state')).includes('operations'),false);
   const shortened=await f.run(f.input);
-  assert.equal(shortened.result.state,'awaiting-caller-delivery');assert.equal(f.decisions(),1);
-  assert.equal(shortened.identity.requestId,oversized.requestId);assert.equal(shortened.phases.length,7);
+  assert.equal(shortened.result.state,'awaiting-caller-delivery');
+  assert.equal(shortened.identity.requestId,oversized.requestId);assert.equal(shortened.phases.length,6);
  });
 }
 test('oversized legacy full-runtime assignment keeps original admission and five phases',async t=>{
- const f=await realPeerFixture(t,'off');
+ const f=await realPeerFixture(t);
  const input=DeskSeatCreateInput.parse({...f.input,assignment:'界'.repeat(WIRE_LIMITS.deskTaskText),
   runtime:{optionId:'first',catalogSha256:f.sha()}});
  const out=await f.run(input);
- assert.equal(out.result.state,'awaiting-caller-delivery');assert.equal(out.phases.length,5);assert.equal(f.decisions(),0);
+ assert.equal(out.result.state,'awaiting-caller-delivery');assert.equal(out.phases.length,5);
  const replay=await f.run(input);assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.effects.length,1);
 });
 
-test('candidate drift during provider observation blocks automatic decision before any network',async t=>{
- const f=await realPeerFixture(t,'armed');
+test('candidate drift during provider observation blocks automatic selection',async t=>{
+ const f=await realPeerFixture(t,1);
  const original=f.host.providers.snapshot;
  f.host.providers.snapshot=async()=>{writeFileSync(join(f.candidate,'src/common.md'),'changed candidate bytes');return original();};
- const out=await f.run();assert.equal(out.result.code,'RUNTIME_INTEGRITY');assert.equal(f.decisions(),0);assert.equal(f.effects.length,0);
+ const out=await f.run();assert.equal(out.result.code,'RUNTIME_INTEGRITY');assert.equal(f.effects.length,0);
 });
 test('legacy recorded full-runtime intent and all five phases replay byte-for-byte without discovery',async t=>{
  const f=fixture(t);const input={...f.input,role:'peer',runtime:{optionId:'old',catalogSha256:'a'.repeat(64)}};
@@ -619,15 +534,15 @@ test('legacy recorded full-runtime intent and all five phases replay byte-for-by
  for(const [i,name] of ['prepared','create-issued','create-returned','create-observed','delivery-handed-off'].entries())put(i+'.json',{name,value:{old:true}});
  put('result.json',{ok:true,state:'awaiting-caller-delivery',agentId:'old-child'});
  const before=Object.fromEntries(readdirSync(path).map(name=>[name,readFileSync(join(path,name),'utf8')]));
- f.deps.preflightPeer=async()=>assert.fail('old preflight');f.deps.selectPeer=async()=>assert.fail('old Jev');f.deps.plan=async()=>assert.fail('old planner');
+ f.deps.preflightPeer=async()=>assert.fail('old preflight');f.deps.selectPeer=async()=>assert.fail('old selection');f.deps.plan=async()=>assert.fail('old planner');
  const replay=await f.run(input);assert.equal(replay.result.agentId,'old-child');assert.equal(replay.phases.length,5);
  assert.deepEqual(Object.fromEntries(readdirSync(path).map(name=>[name,readFileSync(join(path,name),'utf8')])),before);assert.equal(f.effects.length,0);
 });
 
-for (const mode of ['unconfigured','off','shadow','armed']) {
+{
  for (const boundary of ['preflight','select']) {
-  test('v2 '+mode+' '+boundary+' keeps pair diagnostics controlled before create/send',async t=>{
-   const f=await realPeerFixture(t,mode,1);
+  test('v2 '+boundary+' keeps pair diagnostics controlled before create/send',async t=>{
+   const f=await realPeerFixture(t,1);
    f.catalog.version=2;
    Object.assign(f.options[0],{displayName:'Fixture',description:'Bounded coding',effortPolicy:{kind:'select'},runtimeRule:'none'});
    delete f.options[0].thinkingOptionId;f.savePool();
@@ -649,7 +564,7 @@ for (const mode of ['unconfigured','off','shadow','armed']) {
      eligibleValues=values;assert.deepEqual(values,['low','high']);assert.equal(result.recovery.length<=WIRE_LIMITS.rejectionRecovery,true);
     }else assert.match(result.recovery,/Inspect pool eligibility and model\/effort capabilities/);
     assert.doesNotMatch(JSON.stringify(out),/PRIVATE_SECRET/);
-    assert.equal(f.effects.length,0);assert.equal(f.decisions(),0);
+    assert.equal(f.effects.length,0);
     const identity={repoKey:'repo',membershipId:f.row.membershipId,agentId:'parent',kind:'seat-create',requestId:suffix};
     const ops=createDeskOperations(f.formationDeps.stableRoot);
     if(boundary==='preflight')assert.equal(ops.get(identity).code,'EVIDENCE_INCOMPLETE');
@@ -658,16 +573,15 @@ for (const mode of ['unconfigured','off','shadow','armed']) {
      const replay=await f.run(req);assert.equal(replay.receiptSha256,out.receiptSha256);
     }
    }
-   // Use the response's actual effort values in every mode; never rely on omitted-selection discovery.
-   const effort=eligibleValues.at(-1);f.setChoice('pair-'+canonicalSha256(['first',effort]));
+   // Use the response's actual effort values; never rely on omitted-selection discovery.
+   const effort=eligibleValues.at(-1);
    const req={...f.input,requestId:boundary==='preflight'?'ambiguous':'corrected',selection:{optionId:'first',thinkingOptionId:effort},delivery:'server'};
    const out=await f.run(req);assert.equal(out.result.state,'host-accepted',JSON.stringify(out));
    assert.deepEqual(f.effects.map(e=>e.kind),['create','send']);
    assert.equal(f.effects[0].options.config.thinkingOptionId,effort);
-   assert.equal(f.decisions(),mode==='armed'||mode==='shadow'?1:0);
    const replay=await f.run(req);assert.equal(replay.receiptSha256,out.receiptSha256);assert.equal(f.effects.length,2);
    if(boundary==='preflight') {
-    f.configure('off');f.catalog.options[0].effortPolicy={kind:'fixed',thinkingOptionId:'high'};f.savePool();
+    f.catalog.options[0].effortPolicy={kind:'fixed',thinkingOptionId:'high'};f.savePool();
     const single=await f.run({...req,requestId:'sole',selection:{optionId:'first'}});
     assert.equal(single.result.state,'host-accepted',JSON.stringify(single));
    }
@@ -687,12 +601,12 @@ test('selection failure maps typed reasons without forwarding exception text',as
  }
 });
 
-for(const mode of ['unconfigured','off','shadow','armed']) {
+{
  for(const boundary of ['preflight','select']) {
   for(const failure of ['empty-pool','disabled-pool','missing-model','no-allowed-effort','selected-disabled','selected-missing-model']) {
    for(const shape of failure.startsWith('selected-')?['selection']:['none','selection']) {
-   test('v2 '+mode+' '+boundary+' '+failure+' '+shape+' returns specific empty-pair failure before effects',async t=>{
-    const f=await realPeerFixture(t,mode,2);f.catalog.version=2;
+   test('v2 '+boundary+' '+failure+' '+shape+' returns specific empty-pair failure before effects',async t=>{
+    const f=await realPeerFixture(t,2);f.catalog.version=2;
     for(const option of f.options){Object.assign(option,{displayName:'Fixture',description:'Bounded coding',effortPolicy:{kind:'select'},runtimeRule:'none'});delete option.thinkingOptionId;}
     let models=[{id:'model/variant',thinkingOptions:[{id:'low'},{id:'high'}]}];
     if(failure==='empty-pool')f.catalog.options=[];
@@ -707,7 +621,7 @@ for(const mode of ['unconfigured','off','shadow','armed']) {
     assert.equal(result.code,'INVALID_RECORD',JSON.stringify(out));
     assert.equal(result.message,'No eligible preset + effort pair is available for the selected option or pool');
     assert.doesNotMatch(JSON.stringify(out),/PRIVATE_MISSING_MODEL|Peer selection failed/);
-    assert.equal(f.effects.length,0);assert.equal(f.decisions(),0);
+    assert.equal(f.effects.length,0);
     if(boundary==='select')assert.deepEqual(out.phases,[]);
    });
    }
@@ -728,7 +642,7 @@ test('effort diagnostic bounds and validates its public scalar surface',async t=
 for(const shape of ['none','selection'])test('v2 Peer formation waits for a provider snapshot still warming up in a new cwd ('+shape+')',async t=>{
  // A daemon's first snapshot for a cwd holds enabled providers at "loading" without models while it
  // warms them in the background; the warmed catalog arrives on a later read of the same cwd.
- const f=await realPeerFixture(t,'off',1,'codex',{budgetMs:2000,pollMs:5});f.catalog.version=2;
+ const f=await realPeerFixture(t,1,'codex',{budgetMs:2000,pollMs:5});f.catalog.version=2;
  for(const option of f.options){Object.assign(option,{displayName:'Fixture',description:'Bounded coding',effortPolicy:{kind:'fixed',thinkingOptionId:'high'},runtimeRule:'none'});delete option.thinkingOptionId;}
  f.savePool();
  const ready={provider:'slp-codex-peer',enabled:true,status:'ready',modes:[{id:'full-access'}],models:[{id:'model/variant',thinkingOptions:[{id:'low'},{id:'high'}]}]};
@@ -741,7 +655,7 @@ for(const shape of ['none','selection'])test('v2 Peer formation waits for a prov
 });
 
 test('v2 Peer formation still refuses a provider that stays loading past the warm-up budget',async t=>{
- const f=await realPeerFixture(t,'off',1,'codex',{budgetMs:30,pollMs:5});f.catalog.version=2;
+ const f=await realPeerFixture(t,1,'codex',{budgetMs:30,pollMs:5});f.catalog.version=2;
  for(const option of f.options){Object.assign(option,{displayName:'Fixture',description:'Bounded coding',effortPolicy:{kind:'fixed',thinkingOptionId:'high'},runtimeRule:'none'});delete option.thinkingOptionId;}
  f.savePool();let reads=0;
  f.host.providers.snapshot=async()=>{reads++;return {entries:[{provider:'slp-codex-peer',enabled:true,status:'loading'}]};};

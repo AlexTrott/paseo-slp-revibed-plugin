@@ -138,7 +138,7 @@ const pendingOp = operationId => ({
 function receiptFor(f, overrides = {}) {
   return {
     schemaVersion: 1,
-    pluginId: 'paseo-slp',
+    pluginId: 'slp-revibed',
     target: { hostId: overrides.hostId ?? HOST, daemonHome: f.canonical },
     stableRoot: f.stableRoot,
     revision: 0,

@@ -99,7 +99,7 @@ export type TaskExecutionDeps = {
    * resolver (desk-task-runtime): bound installed launch/routing ABI +
    * fresh providers.snapshot observation under the verified daemon home.
    * The adapter resolves before reservation and revalidates before
-   * create; drift fails closed. Pool eligibility, decision receipts and
+   * create; drift fails closed. Pool eligibility and
    * the quota-fallback pin stay inside the resolver.
    */
   resolveSeat(
@@ -117,8 +117,7 @@ export type TaskExecutionDeps = {
 // ---------------------------------------------------------------------------
 
 /** Routing selection pin — the fresh eligible pool option + catalog sha,
- *  optionally carrying the verified Jev decision receipt and the designated
- *  quota-fallback source. */
+ *  optionally carrying the designated quota-fallback source. */
 export type TaskRuntimePin = DeskTaskRuntimePinValue;
 
 /** Resolved seat binding — the resolver's output over the bound

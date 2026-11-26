@@ -461,7 +461,7 @@ export const DESK_TOOL_CATALOG = [
 })[];
 
 /** The SDK surface the dispatch guards need — a structural subset of
- *  PaseoApi (same narrowing convention as supervision/state.ts): tests
+ *  PaseoApi: tests
  *  double it without the daemon and the plugin bundle keeps no runtime
  *  @getpaseo/client dependency. */
 type PaseoLike = {

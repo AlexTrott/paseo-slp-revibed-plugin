@@ -12,11 +12,6 @@ const routingResult = home => ({ routing: { schemaVersion: 1,
 const poolResult = home => ({ schemaVersion: 1, sha256: sha, error: null, legacy: null, legacyError: null,
   pool: { version: 1, policy: 'Choose the eligible seat that fits the task.', options: [{ id: 'custom-seat', provider: 'codex', model: home,
     enabled: true, suitableFor: [], avoidFor: [], notes: 'A custom general-purpose test seat.' }], quotaFallback: { enabled: false, optionId: null } } });
-const jevResult = home => ({ jev: { configured: true, enabled: true, sha256: sha,
-  capabilities: { routing: false, supervision: true },
-  provider: { kind: 'openrouter', model: 'typesafe/jev-1.13', baseUrl: 'https://openrouter.ai' }, error: home } });
-const supervisionResult = home => ({ schemaVersion: 2, config: null, sha256: home === '/a' ? sha : Buffer.from(home).toString('hex').padEnd(64, '0').slice(0, 64),
-  migration: null, observations: [], gates: {}, diagnostics: { droppedEvents: 0, reasons: [] }, unverified: [], error: null });
 const cards = {
   routing: { hook: 'useRoutingCard', get: 'callGetRoleRouting', set: 'callSetRoleRouting', result: routingResult,
     value: card => card.form.supervisor.model, expected: home => `supervisor-${home}`,
@@ -24,12 +19,6 @@ const cards = {
   pool: { hook: 'usePeerPoolCard', get: 'callGetPeerPool', set: 'callSetPeerPool', result: poolResult,
     value: card => card.poolData?.pool?.options[0]?.model ?? null, expected: home => home,
     edit: card => card.setSeatField(0, 'model')('draft'), run: card => card.savePeerPool(), busy: card => card.poolSaving },
-  jev: { hook: 'useJevCard', get: 'callGetJev', set: 'callSetJev', result: jevResult,
-    value: card => card.view?.error ?? null, expected: home => home,
-    edit: card => card.setEnabledOn(false), run: card => card.save(), busy: card => card.busy },
-  supervision: { hook: 'useSupervisionCard', get: 'callGetSupervision', set: 'callSetSupervision', result: supervisionResult,
-    value: card => card.data?.sha256 ?? null, expected: home => supervisionResult(home).sha256,
-    edit: card => card.edit(current => current), run: card => card.save(), busy: card => card.busy },
 };
 async function setup(t, spec, strict = false) {
   const mod = await loadHooks(t);
@@ -41,8 +30,7 @@ async function setup(t, spec, strict = false) {
       isCurrentKey: () => true, sameTarget: () => true, // owner must protect the seam itself
       statusView: null, catalogs: {}, featureSets: {}, featuresLoadingFor: null,
       scrollFocusNode: () => {}, update: (patch, target) => patches.push({ patch, target }),
-      [spec.get]: read.rpc, [spec.set]: write.rpc,
-      callSetJevKey: write.rpc, callTestJev: write.rpc });
+      [spec.get]: read.rpc, [spec.set]: write.rpc });
   };
   const rendered = await renderHook(t, hook, { home: '/a' }, strict);
   return { ...rendered, mod, read, write, patches };
@@ -81,7 +69,7 @@ for (const [name, spec] of Object.entries(cards)) {
     let older;
     act(() => { older = spec.run(state.current); });
     assert.equal(write.calls.length, 1);
-    if (['pool', 'jev', 'supervision'].includes(name)) assert.equal(write.calls[0].input.expectedSha256, sha, 'CAS snapshot unchanged');
+    if (name === 'pool') assert.equal(write.calls[0].input.expectedSha256, sha, 'CAS snapshot unchanged');
     await update({ home: '/b' });
     assert.equal(spec.busy(state.current), false, 'target switch releases abandoned busy');
     await act(async () => read.calls[1].resolve(spec.result('/b')));
@@ -97,7 +85,6 @@ for (const [name, spec] of Object.entries(cards)) {
     assert.equal(spec.busy(state.current), true, 'stale finally cannot clear newer busy');
     assert.notEqual(spec.value(state.current), spec.expected('/stale'));
     if (name === 'pool') assert.equal(state.current.poolError, null);
-    if (name === 'supervision') assert.equal(state.current.cardError, null);
     await act(async () => { write.calls[1].resolve(spec.result('/b')); await newer; });
     assert.equal(spec.busy(state.current), false);
   });
@@ -148,19 +135,19 @@ test('language stale apply completion preserves dirty draft and newer busy state
   await act(async () => write.calls[1].resolve({}));
   assert.equal(state.current.busy, false);
 });
-for (const name of ['pool', 'jev', 'supervision']) test(`${name}: stale read rejection cannot paint an error; current rejection surfaces`, async t => {
+for (const name of ['pool']) test(`${name}: stale read rejection cannot paint an error; current rejection surfaces`, async t => {
   const { state, read, update } = await setup(t, cards[name]);
-  const errorFor = card => name === 'pool' ? card.poolReadError : name === 'supervision' ? card.readError : card.loadError;
+  const errorFor = card => card.poolReadError;
   await update({ home: '/b' });
   await act(async () => read.calls[0].reject(new Error('old target read failure')));
   assert.equal(errorFor(state.current), null);
   await act(async () => read.calls[1].reject(new Error('current target read failure')));
   assert.equal(errorFor(state.current), 'current target read failure');
 });
-for (const name of ['pool', 'supervision']) for (const reject of [false, true]) test(`${name}: stale reload ${reject ? 'error' : 'success'} leaves the new reload and snapshot alone`, async t => {
+for (const name of ['pool']) for (const reject of [false, true]) test(`${name}: stale reload ${reject ? 'error' : 'success'} leaves the new reload and snapshot alone`, async t => {
   const { state, read, update } = await setup(t, cards[name]);
-  const reload = card => name === 'pool' ? card.reloadPeerPool() : card.reload();
-  const reloading = card => name === 'pool' ? card.poolReloading : card.busy;
+  const reload = card => card.reloadPeerPool();
+  const reloading = card => card.poolReloading;
   await act(async () => read.calls[0].resolve(cards[name].result('/a')));
   let oldReload;
   act(() => { oldReload = reload(state.current); });
@@ -175,50 +162,9 @@ for (const name of ['pool', 'supervision']) for (const reject of [false, true]) 
   });
   assert.equal(reloading(state.current), true);
   assert.equal(cards[name].value(state.current), cards[name].expected('/b'));
-  assert.equal(name === 'pool' ? state.current.poolError : state.current.cardError, null);
+  assert.equal(state.current.poolError, null);
   await act(async () => { read.calls[3].resolve(cards[name].result('/b')); await newReload; });
   assert.equal(reloading(state.current), false);
-});
-test('Jev key-save refresh cannot clear the new target key input or key busy', async t => {
-  const { state, read, write, update } = await setup(t, cards.jev);
-  await act(async () => read.calls[0].resolve(jevResult('/a')));
-  let older;
-  act(() => { older = state.current.saveKey('test-old-key'); });
-  await act(async () => write.calls[0].resolve({}));
-  assert.equal(read.calls.length, 2, 'successful key save refreshes its own daemon');
-  await update({ home: '/b' });
-  await act(async () => read.calls[2].resolve(jevResult('/b')));
-  act(() => state.current.setKeyInput('test-new-key'));
-  let newer;
-  act(() => { newer = state.current.saveKey('test-new-key'); });
-  await act(async () => { read.calls[1].resolve(jevResult('/stale')); await older; });
-  assert.equal(state.current.keyInput, 'test-new-key');
-  assert.equal(state.current.keyBusy, true);
-  assert.equal(state.current.view.error, '/b');
-  await act(async () => write.calls[1].resolve({}));
-  await act(async () => { read.calls[3].resolve(jevResult('/b')); await newer; });
-  assert.equal(state.current.keyBusy, false);
-  assert.equal(state.current.keyInput, '');
-});
-for (const reject of [false, true]) test(`Jev stale test ${reject ? 'error' : 'success'} cannot replace a newer pending test`, async t => {
-  const { state, read, write, update } = await setup(t, cards.jev);
-  await act(async () => read.calls[0].resolve(jevResult('/a')));
-  let older;
-  act(() => { older = state.current.runTest(); });
-  await update({ home: '/b' });
-  await act(async () => read.calls[1].resolve(jevResult('/b')));
-  let newer;
-  act(() => { newer = state.current.runTest(); });
-  await act(async () => {
-    if (reject) write.calls[0].reject(new Error('stale test failed'));
-    else write.calls[0].resolve({ ok: true, detail: 'stale result' });
-    await older;
-  });
-  assert.equal(state.current.test, null);
-  assert.equal(state.current.testBusy, true);
-  await act(async () => { write.calls[1].resolve({ ok: false, detail: 'b result' }); await newer; });
-  assert.deepEqual(state.current.test, { ok: false, detail: 'b result' });
-  assert.equal(state.current.testBusy, false);
 });
 test('pool delayed clipboard completion does not flash Copied on another target', async t => {
   const { mod, state, read, update } = await setup(t, cards.pool);
@@ -242,7 +188,7 @@ for (const [name, spec] of Object.entries(cards)) test(`${name}: reopening retai
     current = mod[spec.hook]({ target, targetKey: mod.targetKey(target),
       isCurrentKey: () => true, sameTarget: () => true, statusView: null,
       catalogs: {}, featureSets: {}, featuresLoadingFor: null, scrollFocusNode: () => {}, update: () => {},
-      [spec.get]: read.rpc, [spec.set]: write.rpc, callSetJevKey: write.rpc, callTestJev: write.rpc });
+      [spec.get]: read.rpc, [spec.set]: write.rpc });
     return null;
   }
   t.after(async () => { await act(async () => renderer?.unmount()); });
@@ -258,7 +204,7 @@ for (const [name, spec] of Object.entries(cards)) test(`${name}: reopening retai
   await act(async () => read.calls[1].reject(new Error('refresh unavailable')));
   assert.equal(current.fresh, false);
   assert.equal(write.calls.length, 0);
-  const error = name === 'routing' ? current.readError : name === 'pool' ? current.poolReadError : name === 'jev' ? current.loadError : current.readError;
+  const error = name === 'routing' ? current.readError : current.poolReadError;
   assert.equal(error, 'refresh unavailable');
   await act(async () => renderer.unmount());
   await act(async () => { renderer = TestRenderer.create(React.createElement(Screen, { home: '/b' })); });
@@ -268,7 +214,7 @@ for (const [name, spec] of Object.entries(cards)) test(`${name}: reopening retai
   assert.equal(spec.value(current), spec.expected('/b'));
 });
 
-for (const name of ['pool', 'supervision']) test(`${name}: failed manual reload revokes freshness and preserves the draft until successful retry`, async t => {
+for (const name of ['pool']) test(`${name}: failed manual reload revokes freshness and preserves the draft until successful retry`, async t => {
   const spec = cards[name], { state, read, write } = await setup(t, spec);
   await act(async () => read.calls[0].resolve(spec.result('/a')));
   assert.equal(state.current.fresh, true);
@@ -291,7 +237,7 @@ for (const name of ['pool', 'supervision']) test(`${name}: failed manual reload 
   assert.equal(name === 'pool' ? state.current.poolReadError : state.current.readError, null);
 });
 
-for (const name of ['pool', 'supervision']) test(`${name}: an older same-target reload cannot revive readiness after a newer failed read`, async t => {
+for (const name of ['pool']) test(`${name}: an older same-target reload cannot revive readiness after a newer failed read`, async t => {
   const spec = cards[name], { state, read } = await setup(t, spec);
   await act(async () => read.calls[0].resolve(spec.result('/a')));
   const reload = () => name === 'pool' ? state.current.reloadPeerPool() : state.current.reload();

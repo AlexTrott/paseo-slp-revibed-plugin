@@ -5,8 +5,7 @@ import type { PresetFields } from '../../../shared/runtime/peer-presets.ts';
 import { PRESET_ROUTING_VERSION, PRESET_SELECTION_GUIDANCE, isAutomaticEffort } from '../../../shared/runtime/peer-presets.ts';
 import { providerId, families } from './profiles.ts';
 import { verifyProvider, rejectRouteKeys, runtimeSettingKeys, profileRouteKeys } from './binding.ts';
-import { canonicalJson, verifyReceipt, readJevConfig, resolveJev, askJev } from './jev.ts';
-import type { JevOptions, JevQuestion } from './jev.ts';
+import { canonicalJson } from './canonical-json.ts';
 import { hash } from './package.ts';
 
 export type PresetRoutingContext = {
@@ -86,28 +85,7 @@ export function boundedPresetChoices(set: ReturnType<typeof presetChoiceSet>) {
   if (set.choices.length > 64 || Buffer.byteLength(JSON.stringify(set)) > 24 * 1024) throw new Error('Preset choices exceed 64 pairs / 24 KiB; narrow the pool or allowed efforts before selecting (no candidates were truncated)');
   return set;
 }
-export async function decidePresetRoute(catalog: ResolvedCatalog, request: { role: string; brief: string; providers?: Provider[]; routingContext?: unknown; paseoHome: string }, options: JevOptions = {}) {
-  const set = boundedPresetChoices(presetChoiceSet(catalog, request.role, request.providers, request.routingContext));
-  const { provider, key, armed } = resolveJev(request.paseoHome, 'routing', { allowShadow: true });
-  const criteria = Object.fromEntries(set.choices.map(c => [c.candidateId, `${c.displayName}: ${c.description}; ${c.provider}/${c.model}; effort ${c.effortLabel ?? 'runtime default'}${c.effortDescription ? `: ${c.effortDescription}` : ''}; ${c.selectionHints}`]));
-  criteria['no-suitable-option'] = 'None of the configured preset + effort pairs meets the task; decline rather than guess.';
-  const questions: Record<string, JevQuestion> = { route_option: { type: 'choice',
-    instructions: `Choose one configured preset + effort pair for the task brief. ${set.selectionGuidance} Read all Human descriptions and hints, including custom presets. Eligibility and explicit runtime rules are precomputed and cannot be overridden by prose. Disposition and template origin are not routing classes.`, criteria } };
-  const { receipt, answers } = await askJev({ provider, key, state: { task: request.brief, role: request.role,
-    semantics: PRESET_ROUTING_VERSION, policy: set.policy, selectionGuidance: set.selectionGuidance,
-    options: set.choices, reference: set.context.reference ?? null,
-    crossProvider: set.context.crossProvider === true }, questions,
-    context: { capability: 'routing', role: request.role, armed, catalogSha256: catalog.sha256,
-      vocabularyVersion: PRESET_ROUTING_VERSION, selectionSha256: set.selectionSha256,
-      candidates: [...set.choices.map(c => c.candidateId)], declineCandidate: 'no-suitable-option' } }, options);
-  const candidateId = (answers.route_option as { choice: string }).choice;
-  const chosen = set.choices.find(c => c.candidateId === candidateId);
-  return { schemaVersion: 2, optionId: chosen?.optionId ?? null, thinkingOptionId: chosen?.thinkingOptionId ?? null,
-    candidateId, selectionSha256: set.selectionSha256, routingContext: set.context,
-    catalogSha256: catalog.sha256, declined: candidateId === 'no-suitable-option', role: request.role,
-    tokenConflicts: [], warnings: [], decision: receipt };
-}
-export function bindPresetCatalog(catalog: ResolvedCatalog, role: string, providers: Provider[] | undefined, route: Route, home: string) {
+export function bindPresetCatalog(catalog: ResolvedCatalog, role: string, providers: Provider[] | undefined, route: Route) {
   const set = boundedPresetChoices(presetChoiceSet(catalog, role, providers, route.routingContext));
   if (route.selectionSha256 !== set.selectionSha256) throw new Error('Preset capabilities, reference or selection inputs changed; discover choices again');
   if (!Object.hasOwn(route, 'thinkingOptionId')) throw new Error('v2 requires an explicit selected thinkingOptionId (null for runtime default)');
@@ -115,22 +93,7 @@ export function bindPresetCatalog(catalog: ResolvedCatalog, role: string, provid
   if (!choice) throw new Error('Selected preset + effort is not eligible');
   rejectRouteKeys(route, [...profileRouteKeys, ...runtimeSettingKeys.filter(k => k !== 'thinkingOptionId')], key => `Preset runtime is complete; conflicting route.${key}`);
   const option = catalog.options.find(o => o.id === choice.optionId)!;
-  const config = readJevConfig(home), armed = config?.enabled === true && config.capabilities.routing === true;
-  const receipt = route.decision as import('./jev.ts').VerifiedJevReceipt | undefined;
-  let jevChoice: string | undefined;
-  if (receipt) {
-    verifyReceipt(receipt);
-    const context = receipt.context;
-    if (context.capability !== 'routing' || context.catalogSha256 !== catalog.sha256 || context.role !== role
-      || context.vocabularyVersion !== PRESET_ROUTING_VERSION || context.selectionSha256 !== set.selectionSha256
-      || Object.keys(receipt.questions).length !== 1 || !receipt.questions.route_option
-      || canonicalJson(context.candidates) !== canonicalJson(set.choices.map(c => c.candidateId))
-      || canonicalJson(Object.keys(receipt.questions.route_option.criteria ?? {}).sort()) !== canonicalJson([...set.choices.map(c => c.candidateId), 'no-suitable-option'].sort())
-      || (config?.provider && receipt.model !== config.provider.model)) throw new Error('Preset decision receipt inputs do not match fresh routing inputs');
-    jevChoice = (receipt.answers.route_option as { choice: string }).choice;
-    if (jevChoice !== 'no-suitable-option' && !set.choices.some(c => c.candidateId === jevChoice)) throw new Error('Unknown preset choice in receipt');
-    if (armed && jevChoice !== choice.candidateId) throw new Error('Selected preset + effort differs from armed Jev (or Jev declined)');
-  } else if (armed) throw new Error('Armed Jev requires a matching preset decision receipt');
+  if (route.decision != null) throw new Error('route.decision is not supported: routing decisions are made by the Lead');
   if (route.quotaFallbackFrom !== undefined) {
     const from = catalog.options.find(o => o.id === route.quotaFallbackFrom);
     if (!from || from.id === option.id || !from.roles.includes(role) || !catalog.quotaFallback?.enabled || catalog.quotaFallback.optionId !== option.id) throw new Error('Invalid designated quota fallback');
@@ -139,6 +102,5 @@ export function bindPresetCatalog(catalog: ResolvedCatalog, role: string, provid
     thinkingOptionId: choice.thinkingOptionId, features: structuredClone(option.features ?? {}) },
     routing: { catalogFile: catalog.path, catalogScope: catalog.scope, catalogSha256: catalog.sha256, optionId: option.id,
       thinkingOptionId: choice.thinkingOptionId, selectionSha256: set.selectionSha256, routingContext: set.context,
-      jev: { required: armed, decision: receipt ? 'verified' : 'none', ...(receipt ? { jevChoice, declined: jevChoice === 'no-suitable-option' } : {}) },
       ...(route.quotaFallbackFrom ? { quotaFallbackFrom: route.quotaFallbackFrom } : {}) }, warnings: [] as string[] };
 }

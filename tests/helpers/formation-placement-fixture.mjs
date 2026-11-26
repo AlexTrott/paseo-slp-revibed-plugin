@@ -15,8 +15,8 @@ export function committedRepository(cwd) {
  return realpathSync(join(cwd,'.git'));
 }
 const gitCommonDirOf=cwd=>realpathSync(resolve(cwd,fixtureGit(cwd,'rev-parse','--git-common-dir')));
-export function placementFixture(t,{mode='off',count=1,registration='ready',budgets,role='peer',callerRole='lead',git}={}) {
- const f=selectionFixture(t,{mode,count});
+export function placementFixture(t,{count=1,registration='ready',budgets,role='peer',callerRole='lead',git}={}) {
+ const f=selectionFixture(t,{count});
  const commonDir=committedRepository(f.repository),target=join(f.dir,'target');
  // Fixture prerequisite only; the product never calls Git worktree add or host setup.
  fixtureGit(f.repository,'worktree','add','--detach',target,'HEAD');
@@ -59,8 +59,7 @@ export function placementFixture(t,{mode='off',count=1,registration='ready',budg
   providers:{snapshot:async({cwd})=>{calls.push({kind:'providers',cwd});await providerHook?.(cwd);
    return {entries:[{provider:'slp-codex-'+currentRole,enabled:true,status:'ready',modes:[{id:'full-access'}]}]};}}};
  const planner=createFormationPlanner({runtimePath:candidate,daemonHome:f.home,host:()=>host,
-  importModule:async spec=>{const launch=await import(spec);return {...launch,
-   selectPeerSeat:(request,deps)=>launch.selectPeerSeat(request,{...deps,decide:f.decide})};}});
+  importModule:async spec=>import(spec)});
  const placement=createFormationPlacement({repo:{gitCommonDir:commonDir},host:()=>workspaceApi,budgets,...(git?{git}:{})});
  const deps={stableRoot:join(f.home,'slp-runtime'),repoKey:'repo',host:()=>host,plan:planner,
   placement,placementCapability:planner.placementCapability,preflightPeer:planner.preflightPeer,selectPeer:planner.selectPeer,

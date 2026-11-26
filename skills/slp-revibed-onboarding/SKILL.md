@@ -1,6 +1,6 @@
 ---
-name: paseo-slp-onboarding
-description: Set up or revise a repository's Paseo SLP protocol and Peer pool; verify configured role launch paths. Use for repository onboarding or SLP reconfiguration, not ordinary implementation.
+name: slp-revibed-onboarding
+description: Set up or revise a repository's SLP Revibed protocol and Peer pool; verify configured role launch paths. Use for repository onboarding or SLP reconfiguration, not ordinary implementation.
 ---
 
 # Repository onboarding

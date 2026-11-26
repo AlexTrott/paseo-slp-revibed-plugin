@@ -1,7 +1,7 @@
 // Open, Human-authored Peer options. These defaults seed a new pool only;
 // template names/ids never determine routing behavior.
 export const PRESET_ROUTING_VERSION = 'peer-presets-v2-sufficient-fit';
-/** One decision objective for both Human/Lead discovery and Jev. Advisory
+/** One decision objective for Human and Lead discovery. Advisory
  * task fit never overrides eligibility or ranks arbitrary preset names. */
 export const PRESET_SELECTION_GUIDANCE = 'Follow the Human pool policy and assignment constraints. Choose the smallest sufficient configured capability and the least supported effort sufficient for the actual outcome and verification. Assess unresolved ambiguity, dependency interactions, novelty, stakes and how hard correctness is to check. Source-grounded extraction, inventory, formatting and bounded synthesis usually need less reasoning than novel solutions or uncertain premises. A long brief, many files, documentation, review or architecture labels alone do not justify stronger capability or higher effort. Justify extra capability or effort by a concrete unresolved difficulty or Human requirement; verification remains required at every level. Compare model capability and effort separately, using Human descriptions/hints and host effort descriptions. Preset names, ordering, provider identity and model-name suffixes do not define rank or price. If fit cannot be established, decline. Selection grants no retries, budget expansion or changes to the configured bundle.';
 export type EffortPolicy = { kind: 'select'; allowed?: string[] } | { kind: 'fixed'; thinkingOptionId: string | null };

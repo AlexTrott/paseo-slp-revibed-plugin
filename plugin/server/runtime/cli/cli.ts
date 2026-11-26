@@ -44,8 +44,6 @@ import { missingRuntimeMessage, MissingInstalledRuntimeError, identity, install,
 import { launchPlan, handoffPlan, launchCheck, requestSchema } from './launch.ts';
 import { roleBundle } from './role-bundle.ts';
 import { readCatalog } from './routing.ts';
-import { routeDecide, routeDecideSchema } from './jev-routing.ts';
-import { jevRoutingState } from './jev.ts';
 import { resolveHome } from './managed-home.ts';
 import { installPaseo, uninstallPaseo, upgradePaseo, initWorkspace, materializeWorkspace, installHome } from './paseo-install.ts';
 import { inventory, liveInventory } from './inventory.ts';
@@ -80,7 +78,6 @@ const commands: Record<string, CommandSpec> = {
   materialize: { flags: ['--from', '--apply', '--include', '--paseo-home'], target: 'repository', usage: 'materialize <repository> --from <source-repository> [--include <repo-path>]... [--paseo-home <absolute-home>] [--apply]' },
   monitor: { flags: ['--schema'], target: 'request.json', usage: 'monitor <request.json|-> [--schema]' },
   'route-choices': { flags: ['--paseo-home', '--schema', '--out'], target: 'request.json', usage: 'route-choices <request.json|-> [--schema] [--out <path>] [--paseo-home <absolute-home>]' },
-  'route-decide': { flags: ['--paseo-home', '--schema', '--out'], target: 'request.json', usage: 'route-decide <request.json|-> [--schema] [--out <path>] [--paseo-home <absolute-home>]' },
   notebook: { flags: ['--paseo-home'], target: 'repository', usage: 'notebook <repository> [--paseo-home <absolute-home>]' },
   records: { flags: ['--kind', '--require', '--repo', '--schema', '--render'], target: 'path|-', usage: 'records <path|-> [--kind handback|settlement] [--require handback|settlement] [--repo <absolute-path>] [--schema] | records --render <file|-> [--repo <absolute-path>]' },
   'review-packet': { flags: ['--base', '--since', '--evidence', '--out'], target: 'repository', usage: 'review-packet <absolute-repo> --base <git-ref> [--since <earlier-candidate-dir|snapshot.json>] [--evidence <absolute-file>]... [--out <path-outside-repo>]' },
@@ -291,18 +288,6 @@ try {
         ...(planned.warnings ? { warnings: planned.warnings } : {}), create: planned.create } : planned;
     }
   }
-  else if (command === 'route-decide') {
-    if (options['--schema']) {
-      if (target) throw new Error('route-decide --schema takes no request file');
-      result = routeDecideSchema();
-    } else {
-      // Explicit helper invocation only — Jev is never called from prepare, a
-      // schedule or a background loop. A decline is a successful decision run
-      // whose answer is "no suitable option": emit the receipt and exit 1.
-      result = await routeDecide(readRequest(target!) as Parameters<typeof routeDecide>[0], { home: options['--paseo-home'] });
-      if ((result as Awaited<ReturnType<typeof routeDecide>>).declined) process.exitCode = 1;
-    }
-  }
   else if (command === 'route-choices') {
     if (options['--schema']) {
       if (target) throw new Error('route-choices --schema takes no request file');
@@ -311,7 +296,7 @@ try {
   }
   else if (command === 'routes') {
     const home = resolveHome(options['--paseo-home']);
-    result = { ...readCatalog(target!, home), jevRouting: jevRoutingState(home) };
+    result = readCatalog(target!, home);
   }
   else if (command === 'inventory') result = inventory(options['--paseo-home']);
   else if (command === 'agents') result = agents(options['--paseo-home']);

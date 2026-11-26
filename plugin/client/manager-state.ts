@@ -3,7 +3,7 @@ import type { PresetRuntimeRule } from "../shared/runtime/peer-presets.ts";
 // Pure view-state helpers for the SLP manager surface (spec §3, §9–§11).
 // No react/host imports: this module is unit-tested directly under node, and
 // the client bundle check proves it pulls in no server-only or node code.
-import { AbsolutePath, Id, ROUTE_DECLINE_OPTION_ID } from "../shared/contracts.ts";
+import { AbsolutePath, Id } from "../shared/contracts.ts";
 import { OWNED_PROVIDER_ID_RE, ownedProviderId } from "../shared/runtime/families.ts";
 import { isStandardSeatId, seatTokenConflict } from "../shared/runtime/routing-vocabulary.ts";
 import type { SeatTokenConflict } from "../shared/runtime/routing-vocabulary.ts";
@@ -724,9 +724,6 @@ export function customSeatIdError(id: string, existing: readonly string[]): stri
   if (!PEER_SEAT_ID.test(trimmed)) {
     return `id must match ${PEER_SEAT_ID} (lowercase letters, digits, dashes)`;
   }
-  if (trimmed === ROUTE_DECLINE_OPTION_ID) {
-    return `"${trimmed}" is reserved for the Jev decline sentinel — no seat may take it`;
-  }
   if (isStandardSeatId(trimmed)) {
     return `"${trimmed}" is a reserved standard-seat id — pick a custom id such as "${suggestCustomSeatId(trimmed, existing)}"`;
   }
@@ -793,9 +790,6 @@ export function buildPeerSeat(
   // disabled flag: a Custom row may never carry a reserved standard name, and
   // a Package-managed row may never store tokens diverging from the package
   // set (that state is a Token conflict to resolve, not valid content).
-  if (id === ROUTE_DECLINE_OPTION_ID) {
-    return { error: `${label}: "${id}" is reserved for the Jev decline sentinel — no seat may take it` };
-  }
   if (!form.preset && isStandardSeatId(id) && form.custom === true) {
     return { error: `${label}: "${id}" is a reserved standard-seat id — pick a custom id such as "${suggestCustomSeatId(id, [])}"` };
   }
@@ -846,7 +840,7 @@ export function buildPeerSeat(
   option.suitableFor = lineList(form.suitableFor);
   option.avoidFor = lineList(form.avoidFor);
   const notes = form.notes.trim();
-  if (!form.preset && !notes) return { error: `${label}: notes are required (local only — Jev never sees them)` };
+  if (!form.preset && !notes) return { error: `${label}: notes are required (local only)` };
   option.notes = form.preset ? form.notes : notes;
   if (form.preset) {
     option.displayName = form.displayName ?? ""; option.description = form.description ?? "";

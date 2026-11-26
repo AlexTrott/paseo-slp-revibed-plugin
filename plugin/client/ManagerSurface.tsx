@@ -1,4 +1,4 @@
-// Management surface for the paseo-slp plugin (spec §2, §10).
+// Management surface for the slp-revibed plugin (spec §2, §10).
 // PluginScreenProps carry host.id/host.label only — the daemon home is
 // administrator input, never a prop. Profiles Save explicitly chains save then activation; opening the UI
 // never activates; runtime starts require the two §4 authority acknowledgments. Status is
@@ -18,8 +18,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { activate, catalog, deactivate, reconcile, status, localTarget, setLanguage, getRoleRouting, setRoleRouting, getJev, setJev, setJevKey, testJev, getPeerPool, setPeerPool } from "../shared/contracts.ts";
-import { getSupervision, setSupervision } from "../shared/supervision.ts";
+import { activate, catalog, deactivate, reconcile, status, localTarget, setLanguage, getRoleRouting, setRoleRouting, getPeerPool, setPeerPool } from "../shared/contracts.ts";
 import { FAMILY_IDS, FAMILY_LABEL, FAMILY_PICKER_ORDER } from "../shared/runtime/families.ts";
 import type { RoleName } from "../shared/runtime/families.ts";
 import { PEER_SEAT_ARCHETYPES } from "../shared/archetypes.ts";
@@ -87,9 +86,7 @@ import { readDisplaySnapshot, rememberRead, useTargetLifetime } from "./target-a
 import { useCatalogCache, useCatalogDemand } from "./catalog-demand.ts";
 import { useLanguageCard } from "./cards/language.ts";
 import { useRoutingCard, RoutingCard } from "./cards/routing.tsx";
-import { useJevCard, JevCard, JEV_KIND_DEFAULT, JEV_KIND_LABEL } from "./cards/jev.tsx";
 import { usePeerPoolCard, PeerPoolCard } from "./cards/peer-pool.tsx";
-import { useSupervisionCard, SupervisionCard } from "./cards/supervision.tsx";
 
 // Family knowledge derives from the shared registry (shared/runtime/families.ts):
 // FAMILY_IDS is the canonical order, FAMILY_PICKER_ORDER the picker order
@@ -98,7 +95,7 @@ const AUTHORITY = { exclusiveAdministrativeWindow: true, verifiedHostHomeMapping
 
 import { MANAGER_SECTIONS, managerSection } from "./manager-navigation.ts";
 import type { ManagerSectionId } from "./manager-navigation.ts";
-import { RuntimeIdentity, jevSummary } from "./runtime-overview.tsx";
+import { RuntimeIdentity } from "./runtime-overview.tsx";
 
 // ---------------------------------------------------------------------------
 // Surface
@@ -138,14 +135,8 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
   const callSetLanguage = useRpc(setLanguage);
   const callGetRoleRouting = useRpc(getRoleRouting);
   const callSetRoleRouting = useRpc(setRoleRouting);
-  const callGetJev = useRpc(getJev);
-  const callSetJev = useRpc(setJev);
-  const callSetJevKey = useRpc(setJevKey);
-  const callTestJev = useRpc(testJev);
   const callGetPeerPool = useRpc(getPeerPool);
   const callSetPeerPool = useRpc(setPeerPool);
-  const callGetSupervision = useRpc(getSupervision);
-  const callSetSupervision = useRpc(setSupervision);
 
   const [detectedHome, setDetectedHome] = useState<string | null>(() => readDisplaySnapshot<string>(`home:${host.id}`));
   const [homeOverride, setHomeOverride] = useState("");
@@ -326,19 +317,6 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
     update,
   });
 
-  // The Jev card owns its view, draft fields, load/save/key/test handlers
-  // and target-switch reset — cards/jev.tsx.
-  const jev = useJevCard({
-    target,
-    targetKey: key,
-    sameTarget,
-    callGetJev,
-    callSetJev,
-    callSetJevKey,
-    callTestJev,
-    update,
-  });
-
   // The peer-pool card owns its snapshot/draft, seat handlers, editor UI
   // state and save/reload/import/copy — cards/peer-pool.tsx. `form` and
   // `featureKeys` declare catalog demand; the scroll helper stays shell-owned.
@@ -354,19 +332,6 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
     catalogIsRefreshing,
     featureIsRefreshing,
     scrollFocusNode,
-    update,
-  });
-
-  // The supervision card owns the config snapshot, draft (which Leads, what
-  // happens on a finding, thresholds), agent pickers, CAS save/reload and
-  // the findings readout — cards/supervision.tsx.
-  // It loads with the target (independent of binding, like the Jev card).
-  const supervision = useSupervisionCard({
-    target,
-    targetKey: key,
-    isCurrentKey,
-    callGetSupervision,
-    callSetSupervision,
     update,
   });
 
@@ -785,7 +750,6 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
       <View style={sectionShown("overview")}><Card colors={colors} title="Configuration" subtitle="Drafts stay here while you switch sections. Save each editor explicitly.">
         <KV colors={colors} label="Profiles" value={routing.saved ? saveApplyBusy || view.pending ? view.pending?.uncertain ? "Saved; Apply outcome unconfirmed" : "Saved; Apply operation in progress" : "Saved; inspect latest Apply result" : routing.dirty ? "Unsaved draft" : routing.diverged ? "Saved profiles differ from binding" : "Inspect Profiles for saved and applied settings"} />
         <KV colors={colors} label="Peer pool" value={pool.poolReadError ? "Read unavailable" : pool.poolDirty ? "Unsaved draft" : pool.poolData?.error ? "Pool unavailable" : pool.poolData ? pool.poolData.pool ? "Saved pool; read at next formation" : "No saved pool" : "Awaiting pool read"} />
-        <KV colors={colors} label="Jev" value={jevSummary(jev.view, jev.loadError, { dirty: jev.dirty, saved: jev.saved })} />
         <View style={styles.chipRow}>{MANAGER_SECTIONS.filter(section => section.id !== "overview" && section.id !== "maintenance").map(section => <Button key={section.id} colors={colors} label={`Open ${section.label.toLowerCase()}`} onPress={() => setActiveSection(section.id)} />)}</View>
       </Card></View>
 
@@ -811,7 +775,7 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
         // The user-scope Peer pool — slp-runtime/state/peer-pool.json, the
         // catalog readCatalog resolves for every repository without its own
         // .paseo-slp/slp-routing.json. This card is its sole writer; it loads
-        // with the target (independent of binding, like the Jev card) and a
+        // with the target (independent of binding) and a
         // save takes effect the next time a Lead reads `routes`.
         <View style={sectionShown("pool")}>
         <PeerPoolCard
@@ -819,7 +783,6 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
           target={target}
           compact={compact}
           statusView={statusView}
-          jev={jev}
           pool={pool}
           availableFamilies={availableFamilies}
           catalogs={catalogs}
@@ -845,24 +808,6 @@ function ManagerSession({ host, layout, theme, navigation, params = {}, onSectio
         />
         </View>
       ) : null}
-
-      {target ? (
-        // Jev config is per-daemon-home — independent of activation state, so
-        // the card shows whenever a target resolves (unlike the binding-bound
-        // cards above). Provider kind selects the wire contract (OpenRouter
-        // Decisions API vs TypeSafe first-party System One); model/baseUrl
-        // default per kind, and toggles save through one set-jev call taking
-        // effect at the NEXT preparation — a running session is never
-        // mutated. The key is write-only: the card reports hasKey, never the
-        // value.
-        <View style={sectionShown("jev")}>
-        <JevCard colors={colors} target={target} jev={jev} />
-        </View>
-      ) : null}
-
-      {target ? <View style={sectionShown("supervision")}>
-        <SupervisionCard colors={colors} target={target} jev={jev} supervision={supervision} navigation={navigation} />
-      </View> : null}
 
       <View style={sectionShown("maintenance")}>
       <Card colors={colors} title="Runtime setup" subtitle="Initial activation, runtime updates and recovery. Saving Profiles applies its choices automatically.">

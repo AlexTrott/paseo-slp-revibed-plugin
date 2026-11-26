@@ -4,7 +4,7 @@ import { statSync, accessSync, constants } from 'node:fs';
 import * as fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { credentialShaped } from './jev.ts';
+import { credentialShaped } from '../../../shared/runtime/credential-shape.ts';
 import { ASSIGNMENT_FILE_PREFIX, ASSIGNMENT_SNAPSHOT_PREFIX, ASSIGNMENT_SNAPSHOT_OPEN, ASSIGNMENT_SNAPSHOT_CLOSE } from '../../../shared/runtime/session-delivery.ts';
 
 // How request.assignmentFile reaches the seat's prompt. Pointer mode (default)

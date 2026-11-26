@@ -1,5 +1,5 @@
 {
-  "name": "paseo-slp",
+  "name": "slp-revibed",
   "version": "0.9.1",
   "private": true,
   "license": "MIT",
@@ -8,7 +8,7 @@
     "node": ">=22.18.0 <23.0.0 || >=23.6.0"
   },
   "bin": {
-    "paseo-slp": "bin/slp.mjs"
+    "slp-revibed": "bin/slp.mjs"
   },
   "scripts": {
     "install:slp": "node bin/slp.mjs install --paseo-home",

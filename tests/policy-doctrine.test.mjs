@@ -339,7 +339,7 @@ test('mechanism recurrence still reopens premise under authorized bounds', () =>
 });
 
 test('onboarding adapts actual decision/tool paths without mandatory queue setup', () => {
-  pins('skills/paseo-slp-onboarding/SKILL.md', /current Human authority.*ask only missing risk, budget, review, execution or delivery/,
+  pins('skills/slp-revibed-onboarding/SKILL.md', /current Human authority.*ask only missing risk, budget, review, execution or delivery/,
     /current workflow view instead of inventing parallel bookkeeping.*Lean needs no queue/,
     /Human grant covers them, proceed.*missing confirmation/,
     /healthy role injection can still lack desk membership/,
@@ -349,15 +349,11 @@ test('onboarding adapts actual decision/tool paths without mandatory queue setup
 test('routing delegates actual bundle checks to runtime without granting fallback authority', () => {
   pins('src/references/provider-routing.md', /common policy's once-per-session route verification.*PASEO_AGENT_ID is unavailable.*slp_status\(\{\}\).*one bounded host lookup.*missing parent\/report metadata as a gap/,
     /optionId\/catalogSha256.*runtime resolves the complete bundle against fresh host providers/,
-    /error blocks the branch.*Read references\/jev-routing.md for shadow\/armed\/error, skipping unconfigured\/off/,
+    /The Lead selects.*V1 selects a sole eligible option; several options return choices for selection.optionId/,
     /CLI compatibility uses.*live list_providers/,
     /refresh routes.*quotaFallbackFrom/,
     /Quota alone creates no switch\/cost authority/,
     /mode needs Human/);
-  pins('src/references/jev-routing.md', /Shadow evaluation is the gate before arming/,
-    /Unreadable error blocks dependent routing; unconfigured\/off needs no Jev path/,
-    /armed routing requires the receipt's option, with decline failing closed/,
-    /consistency, not cryptographic authenticity/);
 });
 
 test('role gate-policy reads stay conditional even with desk-enforced pins', () => {
@@ -385,7 +381,7 @@ test('current policy/install graph ships its referenced files and pins its sourc
   const walk = dir => readdirSync(join(root, dir), { withFileTypes: true }).flatMap(entry =>
     entry.isDirectory() ? walk(`${dir}/${entry.name}`) : entry.name.endsWith('.md') ? [`${dir}/${entry.name}`] : []);
   const unit = installUnitPaths(root);
-  for (const path of [...walk('src'), ...walk('skills/paseo-slp-onboarding')]) {
+  for (const path of [...walk('src'), ...walk('skills/slp-revibed-onboarding')]) {
     assert.ok(unit.includes(path), `${path} must ship`);
     for (const pointer of raw(path).matchAll(/\]\(([^)#]+)(?:#[^)]*)?\)/g)) {
       if (!/^[a-z]+:/i.test(pointer[1])) assert.ok(existsSync(resolve(root, dirname(path), pointer[1])), `${path}: ${pointer[1]}`);
@@ -420,10 +416,10 @@ test('review method tools stay conditional and keep Lead obligations', () => {
 
 
 test('ordinary formation requires no caller routing choreography and preserves truthful pending recovery', () => {
-  pins(direct, /Ordinary Peer: omit runtime\/selection for server pool\/Jev choice/,
+  pins(direct, /Ordinary Peer: omit runtime\/selection for server pool choice/,
     /selection-required with operationAdmitted=false.*selection.optionId before admission; ambiguous V2 options need selection.thinkingOptionId.*null for runtime default/,
-    /Armed selection confirms\/detects drift, never forces models; Human constraints belong in assignment, Jev's brief, not grantRef/,
-    /Full-pin compatibility validates complete pool\/Jev pins; no settings overrides/,
+    /Human constraints belong in assignment, not grantRef/,
+    /Full-pin compatibility validates complete pool pins; no settings overrides/,
     /recorded refusal keeps its original body and requestId.*new requestId only after.*no create\/send was issued/,
     /same-Git workspace\/cwd and pins routing\/protocol separately/,
     /Placement\/automatic runtime\/selection waits briefly for exact registration; legacy omitted full-pin Peer\/Lead keeps its delivery path/,
@@ -432,15 +428,11 @@ test('ordinary formation requires no caller routing choreography and preserves t
     /V1 kind=worktree reports a gap before effects/,
     /SDK open may revive archived workspaces; prefer active IDs/,
     /Never install dependencies or materialize to hide a gap/);
-  pins('src/references/provider-routing.md', /Start with runtime\/selection omitted.*Runtime discovery and Jev decisions belong to that server operation/,
+  pins('src/references/provider-routing.md', /Start with runtime\/selection omitted.*Runtime discovery belongs to that server operation/,
     /linked caller without local routing\/protocol inherits its configured same-Git main checkout/,
     /no trustworthy source means gap, not silent user fallback/,
-    /Shadow requires independent Lead selection even for one option; errors block/,
-    /Off\/unconfigured selects a sole eligible option; several options return choices for selection.optionId/,
-    /armed decline\/config\/key\/network failure blocks without default substitution/);
-  pins('src/references/jev-routing.md', /Ordinary slp_seat_create obtains the decision server-side when runtime is omitted/,
-    /Explicit CLI compatibility invokes route-decide; admitted formation pins once, replay never re-decides/,
-    /prepare and --check verify receipts offline/);
+    /V1 selects a sole eligible option; several options return choices for selection.optionId/,
+    /optionId\/catalogSha256 pins remain supported; a decision pin is refused/);
 });
 
 test('bounded scope counts context and dependencies, not an issue count or timeout', () => {
@@ -491,7 +483,6 @@ test('seat formation policy stays within frozen per-file and total word budgets'
   "src/references/anti-patterns.md": 612,
   "src/references/governance.md": 665,
   "src/references/monitoring.md": 910,
-  "src/references/jev-routing.md": 233,
   "src/references/peer-tactics.md": 450
 };
   const words = text => text.trim().split(/\s+/u).length;

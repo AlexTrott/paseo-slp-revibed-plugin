@@ -1348,7 +1348,7 @@ test('installed-impl parity: MiniStore and DaemonConfigStore merge the same patc
       { id: 'slp-lead', name: 'SLP Lead', provider: 'slp-codex-lead', model: 'm' },
     ],
     pluginsEnabled: true,
-    plugins: { 'paseo-slp': { source: 'directory', path: '/plugins/paseo-slp', enabled: true } },
+    plugins: { 'slp-revibed': { source: 'directory', path: '/plugins/paseo-slp', enabled: true } },
     skills: { selection: { mode: 'custom', skills: ['new-skill', 'other'] } },
     appendSystemPrompt: 'appended tail',
     autoArchiveAfterMerge: true,

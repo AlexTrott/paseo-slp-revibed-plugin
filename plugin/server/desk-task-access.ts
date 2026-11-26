@@ -7,7 +7,7 @@ import { assertRealComponents, ensurePrivateDirectory } from "./kept-files.ts";
 import { repoKeyFor } from "./runtime/desk-paths.ts";
 import { createTaskFsIo, createTaskGitIo } from "./desk-task-execution-host.ts";
 import type { TaskGitIo } from "./desk-task-execution-host.ts";
-import { credentialShaped } from "../shared/runtime/jev-transport.ts";
+import { credentialShaped } from "../shared/runtime/credential-shape.ts";
 
 const MAX_CHECKOUT_ROOTS = 64;
 

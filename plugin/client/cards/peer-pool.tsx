@@ -71,7 +71,6 @@ import {
   styles,
   SwitchRow,
 } from "../ui-kit.tsx";
-import type { JevCardState } from "./jev.tsx";
 
 export function usePeerPoolCard({ target, targetKey, isCurrentKey, callGetPeerPool, callSetPeerPool, catalogs, featureSets, featuresLoadingFor, catalogIsRefreshing = () => false, featureIsRefreshing = () => false, scrollFocusNode, update }: {
   target: TargetValue | null;
@@ -616,12 +615,11 @@ export function usePeerPoolCard({ target, targetKey, isCurrentKey, callGetPeerPo
 
 export type PeerPoolCardState = ReturnType<typeof usePeerPoolCard>;
 
-export function PeerPoolCard({ colors, target, compact, statusView, jev, pool, availableFamilies, catalogs, catalogLoadingFor, retryCatalog, retryFeatureSet, scrollFocusNode }: {
+export function PeerPoolCard({ colors, target, compact, statusView, pool, availableFamilies, catalogs, catalogLoadingFor, retryCatalog, retryFeatureSet, scrollFocusNode }: {
   colors: Colors;
   target: TargetValue | null;
   compact: boolean;
   statusView: StatusResult | null;
-  jev: JevCardState;
   pool: PeerPoolCardState;
   availableFamilies: readonly FamilyName[];
   catalogs: Partial<Record<string, CatalogResult>>;
@@ -716,15 +714,6 @@ export function PeerPoolCard({ colors, target, compact, statusView, jev, pool, a
           {poolData !== null && !pool.fresh ? <Text style={[styles.mutedSmall, { color: poolReadError ? colors.statusWarning : colors.foregroundMuted }]}>
             {poolReadError ? `Pool refresh unavailable: ${poolReadError}. Showing the previous read; Reload to retry.` : "Refreshing pool…"}
           </Text> : null}
-          {jev.view?.enabled === true && jev.view.capabilities?.routing === true ? (
-            <View style={[styles.noticeBox, { borderColor: colors.accent, backgroundColor: colors.surface2 }]}>
-              <Text style={[styles.mutedSmall, { color: colors.foreground }]}>
-                Jev routing is armed — the seats below are the draft candidate set Jev picks from;
-                edits apply only after Save, and a seat marked Token conflict is not a
-                valid standard seat.
-              </Text>
-            </View>
-          ) : null}
           {// §7.4.E — the four read states are distinct: still loading, read
            // failed (never painted as an empty list), stored file malformed,
            // and absent. Editing stays locked until a successful snapshot.
@@ -1312,7 +1301,7 @@ export function PeerPoolCard({ colors, target, compact, statusView, jev, pool, a
                     <View style={styles.field}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Text style={[styles.fieldLabel, { color: colors.foreground, flex: 1 }]}>
-                          Task suitability — sent to Jev
+                          Task suitability — read by the Lead
                         </Text>
                         <Button
                           colors={colors}
@@ -1596,7 +1585,7 @@ export function PeerPoolCard({ colors, target, compact, statusView, jev, pool, a
                       </View>
                     ) : null}
                     <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                      Local only — Jev never sees this
+                      Local only — never sent to an agent
                     </Text>
                     {/*
                       §7.4.B — Notes are a local-only annotation editable on

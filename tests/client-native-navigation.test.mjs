@@ -27,7 +27,8 @@ test('native contribution keeps manager ID, normalizes section links and sidebar
   const screen = rig.registrations.find(row => row.kind === 'screen').value;
   assert.equal(screen.id, 'manager');
   assert.equal(rig.registrations.find(row => row.value.id === 'slp').kind, 'sidebar-header');
-  assert.equal(screen.title({ section: 'supervision' }), 'SLP · Supervision');
+  assert.equal(screen.title({ section: 'pool' }), 'SLP · Peer pool');
+  assert.equal(screen.title({ section: 'supervision' }), 'SLP · Overview', 'a removed section falls back to Overview');
   assert.equal(screen.title({ section: '/private/path', token: 'never-forward' }), 'SLP · Overview');
   const command = rig.registrations.find(row => row.value.id === 'open-slp').value;
   command.onSelect({ openScreen: input => rig.opened.push(input) });
@@ -78,17 +79,17 @@ test('native contribution keeps manager ID, normalizes section links and sidebar
   assert.equal(rig.removed.length, 5, 'cleanup is idempotent');
 });
 
-test('partial registration failure rolls back every acquired contribution before any bell timer starts', async t => {
+test('partial registration failure rolls back every acquired contribution', async t => {
   const mod = await loadHooks(t);
   for (const failing of ['addSidebarHeaderItem', 'addCommandCenterItem', 'addWorkspacePanel']) {
     const rig = registrationRig({ [failing]: () => { throw new Error('host refused contribution'); } });
     assert.throws(() => mod.contributeClient(rig.client), /host refused/);
     assert.deepEqual(rig.removed, rig.registrations.map(row => row.value.id).reverse());
-    assert.equal(rig.calls.length, 0, 'no background bell work before static registration succeeds');
+    assert.equal(rig.calls.length, 0, 'registration starts no background work');
   }
 });
 
-test('cleanup awaits async removers, removes all siblings after a failure and disposes the bell poll/listener', async t => {
+test('cleanup awaits async removers, removes all siblings after a failure and leaves no timer behind', async t => {
   const mod = await loadHooks(t);
   t.mock.timers.enable({ apis: ['setInterval'] });
   const removed = [];
@@ -100,40 +101,9 @@ test('cleanup awaits async removers, removes all siblings after a failure and di
   assert.deepEqual(removed, ['slp']);
   assert.equal(rig.removed.length, 4);
   const before = rig.calls.length;
-  mod.notifySupervisionChanged();
   t.mock.timers.tick(120_000);
-  assert.equal(rig.calls.length, before, 'unload owns timer and local subscription cleanup');
+  assert.equal(rig.calls.length, before, 'the contribution owns no timer');
   await cleanup();
-});
-
-test('bell settings link goes to supervision; late/error/reversed reads cannot invent zero recipients', async t => {
-  const mod = await loadHooks(t), reads = deferredRpc(), bells = [], opened = [];
-  t.mock.timers.enable({ apis: ['setInterval'] });
-  const client = { rpc: reads.rpc, openScreen: input => opened.push(input), addHeaderButton: contribution => {
-    const bell = { contribution, removed: false, remove() { this.removed = true; } }; bells.push(bell); return bell;
-  } };
-  const cleanup = mod.contributeSupervisionControls(client);
-  t.after(cleanup);
-  const result = workspaceId => ({ error: null, recipients: [{ workspaceId }] });
-  await reads.calls[0].resolve(result('workspace-a'));
-  await new Promise(resolve => setImmediate(resolve));
-  bells[0].contribution.button.behavior.items[0].behavior.onPress();
-  assert.deepEqual(opened, [{ screenId: 'manager', params: { section: 'supervision' } }]);
-  mod.notifySupervisionChanged();
-  mod.notifySupervisionChanged();
-  reads.calls[2].resolve({ error: 'catalog unavailable', recipients: [] });
-  reads.calls[1].resolve(result('obsolete-workspace'));
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(bells.length, 1);
-  assert.equal(bells[0].removed, false);
-  mod.notifySupervisionChanged();
-  cleanup();
-  reads.calls[3].resolve(result('after-unload'));
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(bells.length, 1);
-  assert.equal(bells[0].removed, true);
-  t.mock.timers.tick(120_000);
-  assert.equal(reads.calls.length, 4);
 });
 
 test('popover reads selected host only on open/refresh, drops late target results and creates no polling or mutations', async t => {

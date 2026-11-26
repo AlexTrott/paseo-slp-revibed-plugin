@@ -139,7 +139,7 @@ test('record-build schema covers strict validator keys and verdict values', () =
 
 test('request commands parse stdin, including a positional dash after flags', t => {
   const dir = fixture(t);
-  for (const command of ['prepare', 'prepare-handoff', 'route-decide', 'monitor', 'record-build']) {
+  for (const command of ['prepare', 'prepare-handoff', 'route-choices', 'monitor', 'record-build']) {
     const file = join(dir, `${command}.json`);
     writeFileSync(file, '{}');
     const fromFile = run([command, file]);
@@ -199,9 +199,8 @@ test('CLI exceptions with codes retain the code prefix and exit behavior', t => 
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /^ENOENT: /);
   assert.doesNotMatch(missing.stderr, /ENOENT: ENOENT:/);
-  const invalid = run(['route-decide', '-'], '{}');
-  assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /^jev-request-invalid: /);
+  const removed = run(['route-decide', '-'], '{}');
+  assert.equal(removed.status, 1, 'the removed decision command is not a command');
   const uncoded = run(['monitor', '-'], '{}');
   assert.match(uncoded.stderr, /^request.agents required\n$/);
 });

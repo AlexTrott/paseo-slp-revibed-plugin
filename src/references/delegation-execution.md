@@ -31,7 +31,7 @@ Unregistered Human root assignment: first create episode:"new"; later inherit.
 grantRef is a declared pointer to the Human grant (e.g. assignment sentence
 and date), a claim, never authenticated; verify authority, one writer and review sufficiency.
 Lead: saved slp-lead. Ordinary Peer: omit runtime/selection for server
-pool/Jev choice (provider-routing.md). Unique requestId/task:
+pool choice (provider-routing.md). Unique requestId/task:
 
 ```json
 {"requestId":"peer-implementation-1","role":"peer","taskLabel":"bounded implementation","assignment":"Implement the assigned slice and return candidate-bound proof.","grantRef":"current Human assignment"}
@@ -39,9 +39,8 @@ pool/Jev choice (provider-routing.md). Unique requestId/task:
 
 selection-required with operationAdmitted=false returns choices: add
 selection.optionId before admission; ambiguous V2 options need selection.thinkingOptionId
-(null for runtime default). Shadow needs an independent pair. Armed selection
-confirms/detects drift, never forces models; Human constraints belong in assignment,
-Jev's brief, not grantRef. Full-pin compatibility validates complete pool/Jev pins;
+(null for runtime default). Human constraints belong in assignment,
+not grantRef. Full-pin compatibility validates complete pool pins;
 no settings overrides.
 Placement defaults to caller; existing worktrees declare paths/reason.
 Qualifies same-Git workspace/cwd and pins routing/protocol separately; Supervisor→Lead may use unnested repositories.

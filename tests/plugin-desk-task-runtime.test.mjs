@@ -157,7 +157,7 @@ test('connected provider failures have no configured or base-family fallback', a
   assert.match(wrongProvider.message, /Unverified provider slp-devin-peer/);
 });
 
-test('pool eligibility and daemon-specific Jev requirements survive native task resolution', async t => {
+test('pool eligibility survives native task resolution and a decision pin is refused', async t => {
   const f = fixture(t);
   f.pool.options[0].availability = 'paused';
   f.savePool();
@@ -166,15 +166,8 @@ test('pool eligibility and daemon-specific Jev requirements survive native task 
   assert.match(excluded.message, /excluded for peer/);
   f.pool.options[0].availability = 'ready';
   f.savePool();
-  const state = join(f.daemonHome, 'slp-runtime/state');
-  mkdirSync(state, { recursive: true });
-  writeFileSync(join(state, 'jev.json'), JSON.stringify({
-    schemaVersion: 1, enabled: true, capabilities: { routing: true },
-    provider: { kind: 'openrouter', model: 'typesafe/jev-1.13' },
-  }));
-  const missingDecision = await f.resolver(f.repository, f.selection());
-  assert.equal(missingDecision.ok, false);
-  assert.match(missingDecision.message, /requires a route.decision receipt/);
+  const withDecision = await f.resolver(f.repository, { ...f.selection(), decision: { kind: 'legacy-receipt' } });
+  assert.equal(withDecision.ok, false);
 });
 
 test('missing, ambiguous and symlink candidate modules never select source fallback', async t => {

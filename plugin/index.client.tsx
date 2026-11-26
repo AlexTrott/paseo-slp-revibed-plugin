@@ -1,10 +1,8 @@
-// Client entry for the paseo-slp manager plugin (Option A v1, spec §2).
+// Client entry for the slp-revibed manager plugin (Option A v1, spec §2).
 // Registers one management surface plus the sidebar/command entries that open
-// it, and the supervision Command Center items + recipient-workspace bell;
-// components receive host.id/host.label, never a daemon filesystem path.
+// it; components receive host.id/host.label, never a daemon filesystem path.
 import type { PluginClientContribution, PluginScreenProps } from "@getpaseo/plugin/client";
 import { ManagerSurface } from "./client/ManagerSurface.tsx";
-import { contributeSupervisionControls } from "./client/supervision-controls.ts";
 import { SlpSidebarItem } from "./client/sidebar.tsx";
 import { MANAGER_SCREEN_ID, managerLocation, managerTitle } from "./client/manager-navigation.ts";
 import { WorkflowPanel } from "./client/workflow-panel.tsx";
@@ -14,7 +12,6 @@ import { WorkflowPanel } from "./client/workflow-panel.tsx";
 export default function contribute(client: Parameters<PluginClientContribution>[0]): ReturnType<PluginClientContribution> {
   const removers: (() => void | Promise<void>)[] = [];
   // Sequential registration permits rollback when a later host API rejects.
-  // Start the bell (which owns a timer) only after static registrations succeed.
   const cleanup = async () => {
     const failures: unknown[] = [];
     for (const remove of removers.splice(0).reverse()) {
@@ -30,16 +27,15 @@ export default function contribute(client: Parameters<PluginClientContribution>[
     removers.push(client.addSidebarHeaderItem({ id: "slp", title: "SLP", Component: SlpSidebarItem }));
     removers.push(client.addCommandCenterItem({
       id: "open-slp", title: "Open SLP Overview", icon: "Workflow", context: "global",
-      keywords: ["slp", "supervisor", "lead", "peer", "providers", "hierarchy"],
+      keywords: ["slp", "revibed", "supervisor", "lead", "peer", "providers", "hierarchy"],
       onSelect({ openScreen }) { openScreen(managerLocation()); },
     }));
     removers.push(client.addWorkspacePanel({ id: "slp-work", title: "SLP work", icon: "Workflow", context: "workspace", Component: WorkflowPanel }));
     removers.push(client.addCommandCenterItem({
       id: "open-slp-work", title: "Read SLP work", icon: "Workflow", context: "workspace",
-      keywords: ["slp", "brief", "review", "decisions", "proof"],
+      keywords: ["slp", "revibed", "brief", "review", "decisions", "proof"],
       onSelect({ openPanel }) { openPanel("slp-work"); },
     }));
-    removers.push(contributeSupervisionControls(client));
   } catch (error) {
     // Invoke every acquired remover immediately; observe async failures without
     // masking the original registration error. No timer exists at this point.

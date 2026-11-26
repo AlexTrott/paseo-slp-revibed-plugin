@@ -1,4 +1,4 @@
-Paseo SLP helps you delegate complex coding work to a coordinated team of agents without having to manage every agent yourself. A Lead owns coordination and integration; Peers take bounded implementation, design or review assignments; an optional Supervisor observes the workflow and relays your decisions. You keep control of goals, important trade-offs and final acceptance.
+SLP Revibed helps you delegate complex coding work to a coordinated team of agents without having to manage every agent yourself. A Lead owns coordination and integration; Peers take bounded implementation, design or review assignments; an optional Supervisor observes the workflow and relays your decisions. You keep control of goals, important trade-offs and final acceptance.
 
 The plugin loads each agent's role instructions and keeps shared work records in Paseo, so you can inspect who owns the work, what decisions were made and what evidence supports the result.
 
@@ -35,34 +35,34 @@ Each team member is an ordinary Paseo agent you can open and chat with. Agents c
 1. Install and sign in to at least one supported provider CLI on the daemon host, then open **SLP** in the sidebar. Available provider CLIs are discovered automatically, before activation; Codex is optional.
 2. Open **SLP > Profiles**, choose a provider and an explicit model for the Supervisor and the Lead, then choose **Save profiles**. Confirm the daemon home and exclusive configuration window when prompted. Saving applies the choices and activates SLP for future launches.
 3. **Maintenance > Runtime setup** remains available for runtime updates, executable overrides and recovery.
-4. For each repository, onboard it with the `paseo-slp-onboarding` skill. It proposes `.paseo-slp/workspace-protocol.md` and the Peer pool, and shows the diff before writing.
+4. For each repository, onboard it with the `slp-revibed-onboarding` skill. It proposes `.paseo-slp/workspace-protocol.md` and the Peer pool, and shows the diff before writing.
 5. Make sure the Peer pool has at least one enabled option, then start a task by creating an agent with the SLP Supervisor or SLP Lead profile.
 
 For example: `Fix the checkout total rounding bug. Report back with the candidate and the checks you ran.`
 
 Installing the plugin, or activating it, does not create any agent.
 
-See the [README](https://github.com/duongvm57/paseo-slp-plugin#readme) for the full setup and operating guide.
+See the [README](https://github.com/AlexTrott/paseo-slp-plugin#readme) for the full setup and operating guide.
 
 ## Settings and limits
 
 - The SLP manager configures Supervisor/Lead models and the Peer pool of allowed runtimes. Engineer, Architect and Reviewer assignments come from the Lead's task brief, independently of the runtime choice.
-- Optional features are off by default: a shared communication language, one designated Peer quota fallback, Jev-assisted runtime routing, and communication supervision that assesses captured Peer handbacks and Lead handling and can alert a Supervisor.
+- Optional features are off by default: a shared communication language and one designated Peer quota fallback.
 - A repository can pin its own Peer pool in `.paseo-slp/slp-routing.json`. A pinned pool takes precedence over the shared pool.
 - Role changes affect future launches, not sessions that are already running.
 - The plugin refuses to overwrite a provider or profile it does not own, and it stops with `RECOVERY_REQUIRED` when the configuration changed outside its journal.
 - Role rules guide agents. Repository and shell permissions still come from Paseo and the provider.
 - Grok uses the official Grok Build CLI over ACP. Sign in with `grok login` or provide `XAI_API_KEY` to the daemon; the wrapper completes noninteractive authentication before session discovery. Models and modes come from Grok's advertised catalog. See [Grok support](../docs/grok.md) for setup and evidence limits.
-- Antigravity supports full access only: its CLI automatically approves tools, subject to native policy denial. Thinking effort is part of the model ID. Its MCP integration supports stdio and Streamable HTTP; legacy SSE and explicit tool-policy preapproval are unsupported. Inherited native MCP services remain available; session routing does not sandbox tools. See [Antigravity support](https://github.com/duongvm57/paseo-slp-plugin/blob/main/docs/antigravity.md) for resume restrictions and evidence limits.
+- Antigravity supports full access only: its CLI automatically approves tools, subject to native policy denial. Thinking effort is part of the model ID. Its MCP integration supports stdio and Streamable HTTP; legacy SSE and explicit tool-policy preapproval are unsupported. Inherited native MCP services remain available; session routing does not sandbox tools. See [Antigravity support](https://github.com/AlexTrott/paseo-slp-plugin/blob/main/docs/antigravity.md) for resume restrictions and evidence limits.
 
 ## Data, filesystem, subprocess and network access
 
 - **Paseo configuration:** activation patches Paseo's `config.json` to add the providers and profiles and to enable MCP injection. Deactivating removes them.
-- **Plugin state:** the plugin keeps its runtime files, journal and settings under `<daemonHome>/slp-runtime/`, including the shared Peer pool. Jev keys are stored there in files with 0600 permissions.
+- **Plugin state:** the plugin keeps its runtime files, journal and settings under `<daemonHome>/slp-runtime/`, including the shared Peer pool.
 - **Temporary files:** Antigravity sessions use private directories under the host's temporary directory for MCP customization and attached images, removed when the session closes, including failed opens. MCP endpoints and credentials travel in the current process environment rather than those customization files. The adapter does not edit shared Antigravity configuration or workspace customization files.
 - **Repository files:** the plugin reads `.paseo-slp/` files in repositories you onboard. It does not write your repository's routing catalog. Desk records are not stored in your repository. They live in a folder per repository inside the plugin's runtime state directory. Task integration applies a bounded change to a target repository only when the Lead invokes it, and uses Git worktrees for isolated placement.
 - **Subprocesses:** the plugin finds Node and the provider CLIs on the daemon's `PATH` and runs short version probes against them. It runs Git when a Lead dispatches or integrates a task. A desk check can run only one of three fixed classes: a ledger integrity check, the repository's generated-payload check, or `git rev-parse HEAD`, run in the candidate's checkout. It also runs the bundled offline `slp.mjs` helper for launch validation. Paseo requests each seat; for Antigravity, this plugin's provider runs `agy` for version/model discovery and sessions, plus Node relays and the session's configured stdio MCP commands.
-- **Network and credentials:** agent CLIs send prompts, code/context and tool results to the model services configured for your account. Antigravity's Streamable HTTP MCP relays send requests and configured authentication headers to the session's MCP endpoints; stdio MCP commands can use their own network connections. If you enable Jev-assisted routing or communication supervision, the configured inputs or captured communications are also sent to the Jev service you choose, either OpenRouter or the TypeSafe System One API. Review those services, permissions and costs before using them.
+- **Network and credentials:** agent CLIs send prompts, code/context and tool results to the model services configured for your account. Antigravity's Streamable HTTP MCP relays send requests and configured authentication headers to the session's MCP endpoints; stdio MCP commands can use their own network connections. Review those services, permissions and costs before using them.
 - **Tracking:** the plugin does not call external trackers or connectors.
 
 ## Requirements

@@ -1,14 +1,14 @@
 ---
 version: '15'
 owner: 'duongvm (Human)'
-applies_to: 'paseo-slp source repository'
+applies_to: 'slp-revibed source repository'
 last_reviewed: '2026-10-07'
 package_version: '0.4.0'
 template_sha256: 'c5b6db392e3d9646d931cda658c3364fe64287caf1f9717ad323681f2e860ad1'
 template_source: 'source checkout; unreleased working candidate'
 template_provenance: 'template_sha256 retains historical rendering provenance; current_source_template_sha256 records the amended source template basis'
-current_source_template_sha256: 'fcd30354c662a33b2224ac3943e3aefe01d7b46dc5c5e6b936b0bb6b7be13db7'
-current_source_template_measured_at: '2026-10-04'
+current_source_template_sha256: '6c745bbc3fd2892fdd4b5b54867a56819e5ae58ca6c359f24ddfca63dc05741d'
+current_source_template_measured_at: '2026-11-26'
 review_selection_decided_by: 'duongvm (Human)'
 review_selection_decided_at: '2026-10-03'
 review_selection_authority: '/tmp/paseo-slp-review-selection-20261003/assignment.md; Human-approved selection and source-protocol budget change'
@@ -114,7 +114,7 @@ lifecycle rules. Release remains Human authority.
 | Topic | Path | Read when |
 |---|---|---|
 | Skill layout | .paseo-slp/references/skill-layout.md | Adding, moving or assigning a skill |
-| Upstream baseline | .paseo-slp/references/upstream-baseline.md | Running paseo-slp-upstream-sync |
+| Upstream baseline | .paseo-slp/references/upstream-baseline.md | Running slp-revibed-upstream-sync |
 
 ## Overrides and provenance
 

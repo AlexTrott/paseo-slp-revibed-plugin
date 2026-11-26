@@ -1,6 +1,6 @@
 # Contributor contract
 
-Paseo SLP is an independent SLP policy package for Paseo: role policies, the
+SLP Revibed is an independent SLP policy package for Paseo: role policies, the
 Paseo plugin that injects them, and the offline `slp.mjs` CLI. Before changing role behavior, read docs/contract.md. The Human’s
 current assignment determines task authority.
 
@@ -67,7 +67,7 @@ description under "Decisions in this task". Settlement rule:
 ## E2E
 
 When asked to run E2E or dogfood this package, read
-skills/paseo-slp-e2e/SKILL.md and execute the requested scenarios from this session
+skills/slp-revibed-e2e/SKILL.md and execute the requested scenarios from this session
 (the whole manifest for a full-suite request). Resume an existing run when requested;
 report every scenario, including blocked and unrun branches. Repository E2E tactics
 live in e2e/workspace-protocol.md.
